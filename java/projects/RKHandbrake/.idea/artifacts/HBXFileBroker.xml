@@ -1,0 +1,16 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="HBXFileBroker">
+    <output-path>$PROJECT_DIR$/out/artifacts/HBXFileBroker</output-path>
+    <root id="archive" name="HBXFileBroker.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/../../modules/HBXFileBrokerExe/src/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="HBXFileBrokerExe" />
+      <element id="module-output" name="RKUtils" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../../lib/mysql-connector-java/mysql-connector-java-5.1.12-bin.jar" path-in-jar="/" />
+      <element id="module-output" name="RKSSHUtils" />
+      <element id="module-output" name="HBXUtils" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../../lib/jsch-0.1.51.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

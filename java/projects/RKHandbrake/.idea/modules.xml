@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXFileBrokerExe/HBXFileBrokerExe.iml" filepath="$PROJECT_DIR$/../../modules/HBXFileBrokerExe/HBXFileBrokerExe.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXFileCollectorExe/HBXFileCollectorExe.iml" filepath="$PROJECT_DIR$/../../modules/HBXFileCollectorExe/HBXFileCollectorExe.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXJobPreprocessor/HBXJobPreprocessor.iml" filepath="$PROJECT_DIR$/../../modules/HBXJobPreprocessor/HBXJobPreprocessor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXJobSubmitterExe/HBXJobSubmitterExe.iml" filepath="$PROJECT_DIR$/../../modules/HBXJobSubmitterExe/HBXJobSubmitterExe.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXMapReduce/HBXMapReduce.iml" filepath="$PROJECT_DIR$/../../modules/HBXMapReduce/HBXMapReduce.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXUtils/HBXUtils.iml" filepath="$PROJECT_DIR$/../../modules/HBXUtils/HBXUtils.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/HBXWrapperExe/HBXWrapperExe.iml" filepath="$PROJECT_DIR$/../../modules/HBXWrapperExe/HBXWrapperExe.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/RKHadoopUtils/RKHadoopUtils.iml" filepath="$PROJECT_DIR$/../../modules/RKHadoopUtils/RKHadoopUtils.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/RKSSHUtils/RKSSHUtils.iml" filepath="$PROJECT_DIR$/../../modules/RKSSHUtils/RKSSHUtils.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../modules/RKUtils/RKUtils.iml" filepath="$PROJECT_DIR$/../../modules/RKUtils/RKUtils.iml" />
+    </modules>
+  </component>
+</project>
+

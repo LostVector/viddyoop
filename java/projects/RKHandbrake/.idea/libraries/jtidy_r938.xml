@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jtidy-r938">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../lib/jtidy-r938.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

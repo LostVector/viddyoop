@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="HBXFileCollector">
+    <output-path>$PROJECT_DIR$/out/artifacts/HBXFileCollector</output-path>
+    <root id="archive" name="HBXFileCollector.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/../../modules/HBXFileCollectorExe/src/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="HBXFileCollectorExe" />
+      <element id="module-output" name="RKUtils" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../../lib/mysql-connector-java/mysql-connector-java-5.1.12-bin.jar" path-in-jar="/" />
+      <element id="module-output" name="HBXUtils" />
+    </root>
+  </artifact>
+</component>

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="hadoop-client-cdh-4.5.0">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../lib/hadoop-client-cdh-4.5.0" />
+      <root url="file://$PROJECT_DIR$/../../lib/hadoop-client-cdh-4.5.0" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <jarDirectory url="file://$PROJECT_DIR$/../../lib/hadoop-client-cdh-4.5.0" recursive="false" />
+  </library>
+</component>

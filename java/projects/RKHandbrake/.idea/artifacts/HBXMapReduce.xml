@@ -1,0 +1,15 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="HBXMapReduce">
+    <output-path>$PROJECT_DIR$/out/artifacts/HBXMapReduce</output-path>
+    <root id="archive" name="HBXMapReduce.jar">
+      <element id="module-output" name="HBXMapReduce" />
+      <element id="module-output" name="HBXUtils" />
+      <element id="dir-copy" path="$PROJECT_DIR$/../../modules/HBXMapReduce/src" />
+      <element id="module-output" name="RKSSHUtils" />
+      <element id="module-output" name="RKUtils" />
+      <element id="library" level="project" name="hadoop-client-cdh-4.5.0" />
+      <element id="module-output" name="RKHadoopUtils" />
+      <element id="module-output" name="HBXWrapperExe" />
+    </root>
+  </artifact>
+</component>
