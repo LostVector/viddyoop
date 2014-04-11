@@ -2,19 +2,22 @@ package com.rkuo.Executables;
 
 import com.rkuo.handbrake.*;
 import com.rkuo.logging.RKLog;
+import com.rkuo.threading.RKEvent;
 import com.rkuo.util.FileUtils;
 import com.rkuo.util.Misc;
+import com.rkuo.util.OperatingSystem;
 
-import java.io.File;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
+    private final static Integer MAX_XRES = 1920;
+    private final static Integer MAX_YRES = 1080;
 //    private static long SCAN_DELAY_MS = 60000;
 //    private static long EVENT_LOOP_DELAY_MS = 1000;
 //    private static long TIMEOUT_COPY = 15 * 60 * 1000; // 15 min (in ms)
@@ -191,6 +194,9 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         state.ResourcesPassword = hbxwp.ResourcesPassword;
         state.ResourcesHostname = hbxwp.ResourcesHostname;
 
+        state.PrimaryLanguage = hbxwp.PrimaryLanguage;
+        state.SecondaryLanguage = hbxwp.SecondaryLanguage;
+
         state.Abort = hbxwp.Abort;
 
         return true;
@@ -257,13 +263,13 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             return null;
         }
 
-        trackPrimary = GetPrimaryTrack( hbxspIn );
+        trackPrimary = GetPrimaryTrack( state.PrimaryLanguage, hbxspIn );
         if( trackPrimary != null ) {
             aAudioTracks.add( trackPrimary );
         }
 
         // for anime, we want to add the original japanese track on top of the english one
-        trackJapanese = GetAudioTrack( "japanese", hbxspIn );
+        trackJapanese = GetBestAudioTrack( state.SecondaryLanguage, hbxspIn );
         if( trackJapanese != null ) {
             if( trackPrimary == null ) {
                 aAudioTracks.add( trackJapanese );
@@ -304,16 +310,30 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         // Encode source
         RKLog.Log( "Encoding source %s to target %s.", state.fLocalSource.getAbsolutePath(), state.fLocalTarget.getAbsolutePath() );
         hbxes.EncodingStarted = new Date();
-        hbxsp = HBXExeHelper.ExecuteHandbrake098ForAppleTV2012(
+        HandBrakeExeParams params = GenerateHandbrakeParams(
                 state.handbrakeExe,
                 state.fLocalSource.getAbsolutePath(),
                 state.fLocalTarget.getAbsolutePath(),
                 hbxspIn.XRes,
                 hbxspIn.YRes,
-                aAudioTracks.toArray( new HBXAudioTrack[aAudioTracks.size()] ),
+                aAudioTracks.toArray(new HBXAudioTrack[aAudioTracks.size()]),
                 subtitleTracks,
+                OperatingSystem.isMac(),
                 callback,
-                state.Abort );
+                state.Abort
+        );
+
+        hbxsp = HBXExeHelper.ExecuteHandbrake(params);
+//        hbxsp = HBXExeHelper.ExecuteHandbrake098ForAppleTV2012(
+//                state.handbrakeExe,
+//                state.fLocalSource.getAbsolutePath(),
+//                state.fLocalTarget.getAbsolutePath(),
+//                hbxspIn.XRes,
+//                hbxspIn.YRes,
+//                aAudioTracks.toArray( new HBXAudioTrack[aAudioTracks.size()] ),
+//                subtitleTracks,
+//                callback,
+//                state.Abort );
         if( hbxsp == null ) {
             RKLog.Log( "Handbrake: Encoding %s failed.", state.fLocalTarget.getAbsolutePath() );
             return null;
@@ -389,12 +409,12 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         return null;
     }
 
-    protected static HBXAudioTrack GetPrimaryTrack( HBXScanParams hbxsp ) {
+    protected static HBXAudioTrack GetPrimaryTrack( String language, HBXScanParams hbxsp ) {
 
         // look for first english ac3 5.1 track
-        RKLog.Log( "Looking for an English AC3 5.x track." );
+        RKLog.Log( "Looking for a %s AC3 5.x track.", language );
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase("english") == 0 ) {
+            if( at.Language.compareToIgnoreCase(language) == 0 ) {
                 if( at.Codec.compareToIgnoreCase("ac3") == 0 ) {
                     if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
                         RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
@@ -425,10 +445,10 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             }
         }
 
-        // otherwise, just look for first english track
-        RKLog.Log( "Looking for any English track." );
+        // otherwise, just look any english track
+        RKLog.Log( "Looking for any %s track.", language );
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase("english") == 0 ) {
+            if( at.Language.compareToIgnoreCase(language) == 0 ) {
                 RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
                 return at;
             }
@@ -440,9 +460,9 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
     /*
     This will find the best specified language track.  Right now, used for anime.
      */
-    protected static HBXAudioTrack GetAudioTrack( String language, HBXScanParams hbxsp ) {
+    protected static HBXAudioTrack GetBestAudioTrack( String language, HBXScanParams hbxsp ) {
 
-        // look for first japanese ac3 5.1 track
+        // look for the first ac3 5.1 track in the specified language
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
             if( at.Language.compareToIgnoreCase(language) == 0 ) {
                 if( at.Codec.compareToIgnoreCase("ac3") == 0 ) {
@@ -459,7 +479,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             }
         }
 
-        // otherwise, just look for first japanese track
+        // otherwise, just look for the first track in the specified language
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
             if( at.Language.compareToIgnoreCase(language) == 0 ) {
                 RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
@@ -489,7 +509,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
                 HBXSubtitleTrack subtitleTrack = new HBXSubtitleTrack();
 
-                mappedLanguageCode = MapISO6392Code(t.Language);
+                mappedLanguageCode = ISO6392CodeBibliographicToTerminology(t.Language);
 
                 if( t.CodecID.compareToIgnoreCase("S_TEXT/UTF8") == 0 ) {
                     subExt = "srt";
@@ -577,7 +597,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
     }
 
     // Converts three letter bibliographic code to terminology code (which is the data we get from mkvinfo)
-    protected static String MapISO6392Code( String code ) {
+    protected static String ISO6392CodeBibliographicToTerminology(String code) {
 
         String outCode;
 
@@ -643,5 +663,161 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         }
 
         return outCode;
+    }
+
+    public static HandBrakeExeParams GenerateHandbrakeParams(
+            String handbrakeExe,
+            String sourceFilename,
+            String targetFilename,
+            int xRes,
+            int yRes,
+            HBXAudioTrack[] audioTracks,
+            HBXSubtitleTrack[] subtitleTracks,
+            boolean isMac,
+            IHandBrakeExeCallback callback,
+            RKEvent abort) {
+
+        HandBrakeExeParams params;
+        String sourceExtension;
+        boolean             bStrictAnamorphic;
+        boolean             bFullHD;
+
+        params = new HandBrakeExeParams();
+        sourceExtension = com.rkuo.io.File.GetExtension(params.Input);
+
+        bStrictAnamorphic = true;
+        if( xRes > MAX_XRES || yRes > MAX_YRES ) {
+            bStrictAnamorphic = false;
+        }
+
+        bFullHD = false;
+        if( (xRes > 1280) || (yRes > 720) ) {
+            bFullHD = true;
+        }
+
+        params.Verbose = 1;
+        params.Input = sourceFilename;
+        params.Output = targetFilename;
+        params.Format = HandBrakeExeParams.DestinationFormat.MP4;
+
+        params.Crop = HandBrakeExeParams.PictureCropOption.Strict;
+        params.CropTop = 0;
+        params.CropBottom = 0;
+        params.CropLeft = 0;
+        params.CropRight = 0;
+
+        // fix
+        params.Quality = 20.0;
+        if( bFullHD == true ) {
+            params.Quality = 23.0;
+        }
+
+        params.RateControl = HandBrakeExeParams.VideoFrameRateControlOption.PEAK_LIMITED;
+        params.Rate = HandBrakeExeParams.VideoRateOption.FRAMERATE_29_97;
+
+        params.Encoder = HandBrakeExeParams.VideoEncoderOption.X264;
+
+        // high profile 3.1 settings
+        params.x264opts = "b-adapt=2:rc-lookahead=50:vbv-maxrate=14000:vbv-bufsize=14000";
+        if( bFullHD == true ) {
+            // high profile 4.0 settings
+            params.x264opts = "b-adapt=2:rc-lookahead=50:vbv-maxrate=25000:vbv-bufsize=20000";
+        }
+
+        // encode everything to mono or (usually) stereo aac.  aac tracks must come first
+        for( Integer x=0; x < audioTracks.length; x++ ) {
+            params.AudioTracks.add(audioTracks[x].TrackNumber);
+            if( isMac == true ) {
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.CA_AAC);
+            }
+            else {
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.FAAC);
+            }
+
+            params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.DPL2);
+            params.AudioSampleRates.add(48);
+            params.AudioBitrates.add(224);
+            params.AudioDynamicRangeCompressions.add(2.0);
+        }
+
+        // ac3 surround tracks come next ... we try to passthru all ac3, but encode to ac3 otherwise
+        // we ignore stereo tracks because the aac encoding above already takes care of that
+        for( Integer x=0; x < audioTracks.length; x++ ) {
+            if( audioTracks[x].SurroundNotation.contains("1.0") == true ) {
+                continue;
+            }
+
+            if( audioTracks[x].SurroundNotation.contains("2.0") == true ) {
+                continue;
+            }
+
+            if( audioTracks[x].SurroundNotation.contains("Dolby Surround") == true ) {
+                continue;
+            }
+
+            if( audioTracks[x].Codec.compareToIgnoreCase("ac3") == 0 ) {
+                params.AudioTracks.add(audioTracks[x].TrackNumber);
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.COPY_AC3);
+                params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.AUTO);
+                params.AudioSampleRates.add(0);
+                params.AudioBitrates.add(0);
+                params.AudioDynamicRangeCompressions.add(0.0);
+                continue;
+            }
+
+            if( audioTracks[x].Codec.compareToIgnoreCase("flac") == 0 ) {
+                params.AudioTracks.add(audioTracks[x].TrackNumber);
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.FFAC3);
+                params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.AUTO);
+                params.AudioSampleRates.add(0);
+                params.AudioBitrates.add(448);
+                params.AudioDynamicRangeCompressions.add(0.0);
+                continue;
+            }
+        }
+
+        // subtitles
+        if( subtitleTracks.length > 0 ) {
+            for( int x=0; x < subtitleTracks.length; x++ ) {
+                HBXSubtitleTrack st = subtitleTracks[x];
+
+                params.SrtFiles.add(st.Filename);
+                params.SrtCodesets.add("UTF-8");
+                if( st.Language.length() == 0 ) {
+                    params.SrtCodesets.add("und");
+                }
+                else {
+                    params.SrtCodesets.add(st.Language);
+                }
+                if( st.Default == true ) {
+                    params.SrtDefault = x+1;
+                }
+            }
+        }
+
+        if( bStrictAnamorphic == true ) {
+            params.Anamorphic = HandBrakeExeParams.PictureAnamorphicOption.STRICT;
+        }
+        else {
+            params.Anamorphic = HandBrakeExeParams.PictureAnamorphicOption.LOOSE;
+            params.Modulus = 4;
+
+            params.Width = MAX_XRES;
+            params.MaxWidth = MAX_XRES;
+            params.MaxHeight = MAX_YRES;
+        }
+
+        params.Markers = true;
+        params.LargeFile = true;
+
+        if( sourceExtension.compareToIgnoreCase("ts") == 0 ) {
+            params.Decomb = true;
+            params.Detelecine = true;
+        }
+
+        params.Executable = handbrakeExe;
+        params.Callback = callback;
+        params.Abort = abort;
+        return params;
     }
 }

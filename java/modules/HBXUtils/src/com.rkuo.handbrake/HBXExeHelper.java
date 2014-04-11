@@ -115,6 +115,368 @@ public class HBXExeHelper {
                 callback, evAbort );
     }
 
+    // When this function and HandBrakeExeParams are fully defined,
+    // we should be able to fully control the handbrake exe from java with this function
+    public static HBXScanParams ExecuteHandbrake( HandBrakeExeParams params ) {
+
+        HBXScanParams       hbxsp;
+        Process             process;
+        String              line;
+        InputStream         is;
+        InputStreamReader   isr;
+        BufferedReader      bufr;
+        ArrayList<String>   cmdArgs;
+        int                 nLastProgress;
+        double              dLastProgress;
+        long                lastProgressChange;
+
+        hbxsp = new HBXScanParams();
+        nLastProgress = -1;
+        dLastProgress = -1;
+        lastProgressChange = System.currentTimeMillis();
+
+        cmdArgs = new ArrayList<String>();
+        cmdArgs.add( params.Executable );
+
+        if( params.Verbose > 0 ) {
+            cmdArgs.add( "--verbose" );
+            cmdArgs.add( params.Verbose.toString() );
+        }
+
+        if( params.Input.length() > 0 ) {
+            cmdArgs.add( "--input" );
+            cmdArgs.add( params.Input );
+        }
+
+        if( params.Output.length() > 0 ) {
+            cmdArgs.add( "--output" );
+            cmdArgs.add( params.Output );
+        }
+
+        if( params.Format != HandBrakeExeParams.DestinationFormat.AUTODETECT ) {
+            cmdArgs.add( "--format" );
+            cmdArgs.add( params.Format.toString() );
+        }
+
+        if( params.Crop == HandBrakeExeParams.PictureCropOption.Strict ) {
+            cmdArgs.add( "--crop" );
+            cmdArgs.add( String.format("%d:%d:%d:%d",params.CropTop,params.CropBottom,params.CropLeft,params.CropRight) );
+        }
+        else if( params.Crop == HandBrakeExeParams.PictureCropOption.Loose ) {
+            cmdArgs.add( "--loose-crop" );
+            if( params.LooseCropMaximum > 0 ) {
+                cmdArgs.add( params.LooseCropMaximum.toString() );
+            }
+        }
+        else {
+            // autocrop
+        }
+
+        cmdArgs.add( "--quality" );
+        cmdArgs.add( String.format("%.1f",params.Quality) );
+
+        if( params.RateControl != HandBrakeExeParams.VideoFrameRateControlOption.DEFAULT ) {
+            cmdArgs.add( "--" + params.RateControl.toString() );
+        }
+
+        cmdArgs.add( "--rate" );
+        if( params.Rate != HandBrakeExeParams.VideoRateOption.FRAMERATE_VARIABLE ) {
+            cmdArgs.add( String.format(params.Rate.toString()) );
+        }
+
+        if( params.Encoder != HandBrakeExeParams.VideoEncoderOption.DEFAULT ) {
+            cmdArgs.add( "--encoder" );
+            cmdArgs.add( params.Encoder.toString() );
+        }
+
+        if( params.Decomb == true ) {
+            cmdArgs.add( "--decomb" );
+        }
+
+        if( params.Detelecine == true ) {
+            cmdArgs.add( "--detelecine" );
+        }
+
+        if( params.x264opts.length() > 0 ) {
+            cmdArgs.add( "--x264opts" );
+            cmdArgs.add( params.x264opts );
+        }
+
+        if( params.AudioTracks.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--audio" );
+            for( Integer i : params.AudioTracks ) {
+                args += i.toString() + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.AudioEncoders.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--aencoder" );
+            for( HandBrakeExeParams.AudioEncoderOption aeo : params.AudioEncoders ) {
+                args += aeo.toString() + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.AudioMixdowns.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--mixdown" );
+            for( HandBrakeExeParams.AudioMixdownOption aeo : params.AudioMixdowns ) {
+                args += aeo.toString() + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.AudioSampleRates.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--arate" );
+            for( Integer i : params.AudioSampleRates ) {
+                if( i == 0 ) {
+                    args += "auto,";
+                }
+                else {
+                    args += i.toString() + ",";
+                }
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.AudioBitrates.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--ab" );
+            for( Integer i : params.AudioBitrates ) {
+                if( i == 0 ) {
+                    args += "auto,";
+                }
+                else {
+                    args += i.toString() + ",";
+                }
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.AudioDynamicRangeCompressions.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--drc" );
+            for( Double d : params.AudioDynamicRangeCompressions ) {
+                args += String.format("%.1f,",d);
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.SrtFiles.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--srt-file" );
+            for( String s : params.SrtFiles ) {
+                args += s + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.SrtCodesets.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--srt-codeset" );
+            for( String s : params.SrtCodesets ) {
+                args += s + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.SrtLanguages.size() > 0 ) {
+            String args = "";
+
+            cmdArgs.add( "--srt-lang" );
+            for( String s : params.SrtLanguages ) {
+                args += s + ",";
+            }
+            args = args.substring(0, args.length()-1);
+            cmdArgs.add( args );
+        }
+
+        if( params.SrtDefault > 0 ) {
+            cmdArgs.add( "--srt-default" );
+            cmdArgs.add( params.SrtDefault.toString() );
+        }
+
+        if( params.Anamorphic == HandBrakeExeParams.PictureAnamorphicOption.STRICT ) {
+            cmdArgs.add( "--strict-anamorphic" );
+        }
+        else if( params.Anamorphic == HandBrakeExeParams.PictureAnamorphicOption.LOOSE ) {
+            cmdArgs.add( "--loose-anamorphic" );
+            if( params.Modulus > 0 ) {
+                cmdArgs.add( "--modulus" );
+                cmdArgs.add( params.Modulus.toString() );
+            }
+
+            cmdArgs.add( "--width" );
+            cmdArgs.add( params.Width.toString() );
+            cmdArgs.add( "--maxWidth" );
+            cmdArgs.add( params.MaxWidth.toString() );
+            cmdArgs.add( "--maxHeight" );
+            cmdArgs.add( params.MaxHeight.toString() );
+        }
+        else {
+            // auto
+        }
+
+        if( params.Markers == true ) {
+            cmdArgs.add( "--markers" );
+        }
+
+        if( params.LargeFile == true ) {
+            cmdArgs.add( "--large-file" );
+        }
+
+        // let's print the constructed command line for reference
+        String command;
+
+        command = "";
+        for( String c : cmdArgs ) {
+            command += c + " ";
+        }
+
+        RKLog.Log( "ExecuteHandbrake attempting to run HandBrake. Command line follows." );
+        RKLog.Log( command );
+
+        // OK, start executing
+        try {
+            ProcessBuilder      pb;
+
+            pb = new ProcessBuilder(cmdArgs);
+            pb.redirectErrorStream( true );
+
+            process = pb.start();
+        }
+        catch( IOException ioex ) {
+            RKLog.Log( "ExecuteHandbrake failed. %s", ioex.getMessage() );
+            return null;
+        }
+
+        is = process.getInputStream();
+        isr = new InputStreamReader(is);
+
+        bufr = new BufferedReader(isr);
+
+        while (true) {
+            int     exitCode;
+            boolean br;
+            boolean bAbort;
+
+            bAbort = false;
+
+            exitCode = Integer.MIN_VALUE;
+            try {
+                exitCode = process.exitValue();
+            }
+            catch( IllegalThreadStateException itsex ) {
+                // process has not exited yet ... this is ok
+            }
+
+            // We do this work before checking the exit code so that any buffered data can be spooled out
+            // after reading the exit code but prior to exiting
+            while( true ) {
+
+                long    now;
+
+                now = System.currentTimeMillis();
+
+                if( params.Abort != null ) {
+                    br = params.Abort.Wait(0);
+                    if( br == true ) {
+                        RKLog.Log( "ExecuteHandbrake aborted." );
+                        process.destroy();
+                        bAbort = true;
+                        break;
+                    }
+                }
+
+                if( now > (lastProgressChange + TIMEOUT_ENCODING) ) {
+                    RKLog.Log( "Progress has not changed for 15 minutes. Failing out..." );
+                    process.destroy();
+                    bAbort = true;
+                    break;
+                }
+
+                try {
+                    line = bufr.readLine();
+                }
+                catch (IOException ioex) {
+                    break;
+                }
+
+                if( line == null ) {
+                    break;
+                }
+
+                if( line.startsWith("Encoding:") == true ) {
+                    try {
+                        double  dProgress;
+                        int     nProgress;
+
+                        dProgress = HBXExeHelper.ScanHandbrakeProgress( line );
+                        nProgress = (int)dProgress;
+
+                        // this is for printing ... spamming the log with progress updates is not helpful
+                        // we only output to the log when progress advances by 1%
+                        // temporarily obsoleting this ... we assume the callback will handle when to print.
+                        if( nProgress > nLastProgress ) {
+                            nLastProgress = nProgress;
+//                            HBXExeHelper.PrintProgress( line, nProgress );
+                        }
+
+                        if( params.Callback != null ) {
+                            params.Callback.Process( line, dProgress );
+                        }
+
+                        // this is a more granular tracking of progress in hundredths of a percent
+                        // we check this because the finer granularity lets us reliably track whether we are hung
+                        if( dProgress > dLastProgress ) {
+                            dLastProgress = dProgress;
+                            lastProgressChange = now;
+                        }
+                    }
+                    catch( Exception ex ) {
+                        // just swallow any poorly formatted lines
+                    }
+                }
+                else {
+                    RKLog.println(line);
+                }
+            }
+
+            if( exitCode != Integer.MIN_VALUE ) {
+                RKLog.Log( "Handbrake exited with error code %d.", exitCode );
+                hbxsp.ExitCode = exitCode;
+                break;
+            }
+
+            if( bAbort == true ) {
+                hbxsp.ExitCode = -1;
+                break;
+            }
+        }
+
+        return hbxsp;
+    }
+
     public static HBXScanParams ExecuteHandbrake(
             Integer handbrakeVersion,
             Integer maxXRes,

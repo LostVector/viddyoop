@@ -20,6 +20,7 @@ public class HBXWrapperLogicState {
         public File                    fTempTarget;
         public File                    fLocalSource, fLocalTarget, fLocalStats;
         public File                    fFailed;
+        public String                  PrimaryLanguage, SecondaryLanguage;
         public RKEvent Abort;
 
     public HBXWrapperLogicState() {
