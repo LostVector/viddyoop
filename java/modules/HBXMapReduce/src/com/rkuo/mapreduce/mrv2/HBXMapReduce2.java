@@ -28,7 +28,7 @@ import java.util.*;
 
 public class HBXMapReduce2 extends HBXMapReduceBase {
 
-    protected final static String HADOOP_USER = "vidoop";
+//    protected final static String HADOOP_USER = "vidoop";
 
     @Override
     public Map<String,String> LoadSettings(String filename) {
@@ -51,6 +51,7 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
         final String hdfsUrl;
         String inputPath, outputPath;
         File f;
+        final String HADOOP_USER = System.getenv("HADOOP_USER_NAME");
 
         System.out.format("HBXMapReduce2::run begins.\n");
 
@@ -134,7 +135,7 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
             // input path is a file
             inputPath = String.format("/user/%s/input/%s-%s.txt",HADOOP_USER,f.getName(),sDate);
             fTemp = File.createTempFile("input",".txt");
-            com.rkuo.io.File.WriteString("This is a dummy file for Vidoop.\n\n", fTemp);
+            com.rkuo.io.File.WriteString("This is a dummy file for Viddyoop.\n\n", fTemp);
             fs.copyFromLocalFile(new Path(fTemp.getAbsolutePath()), new Path(inputPath));
             fTemp.delete();
         }
@@ -209,7 +210,6 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
     }
 
     public static void main(String[] args) throws Exception {
-        System.setProperty("HADOOP_USER_NAME",HADOOP_USER);
         int res = ToolRunner.run(new Configuration(), new HBXMapReduce2(), args);
         if( res != 0 ) {
             throw new Exception("ToolRunner failed on HBXMapReduce.");
@@ -218,12 +218,10 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
     }
 
     @Override
-    public boolean Submit( Map<String,String> map) {
-        System.setProperty("HADOOP_USER_NAME",HADOOP_USER);
-
+    public boolean Submit( Map<String,String> mapParameters ) {
         List<String> aArgs = new ArrayList<String>();
 
-        for( Map.Entry<String,String> e : map.entrySet() ) {
+        for( Map.Entry<String,String> e : mapParameters.entrySet() ) {
             aArgs.add(String.format("/%s:%s",e.getKey(),e.getValue()));
         }
 
