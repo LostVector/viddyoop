@@ -9,8 +9,10 @@ import java.util.*;
 
 import com.rkuo.hadoop.HBXMapReduceBase;
 import com.rkuo.logging.RKLog;
+import com.rkuo.shared.HBXJobPreprocessorBase;
+import com.rkuo.shared.HBXJobSubmitterParams;
+import com.rkuo.shared.HBXOriginalStats;
 import com.rkuo.util.*;
-import com.rkuo.handbrake.*;
 
 // Watches a input directory
 // Moves the files to a processing directory

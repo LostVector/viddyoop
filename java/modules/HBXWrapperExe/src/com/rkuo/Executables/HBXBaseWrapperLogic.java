@@ -2,6 +2,11 @@ package com.rkuo.Executables;
 
 import com.rkuo.handbrake.*;
 import com.rkuo.logging.RKLog;
+import com.rkuo.mkvtoolnix.MKVExeHelper;
+import com.rkuo.mkvtoolnix.MKVTrack;
+import com.rkuo.shared.HBXEncodingStats;
+import com.rkuo.subtitles.SrtEntry;
+import com.rkuo.subtitles.SrtParser;
 import com.rkuo.threading.RKEvent;
 import com.rkuo.util.FileUtils;
 import com.rkuo.util.Misc;
@@ -291,7 +296,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         if( isMkv == true ) {
             MKVTrack[] tracks;
 
-            tracks = HBXExeHelper.ExecuteMKVInfo( state.mkvInfoExe, state.fLocalSource.getAbsolutePath() );
+            tracks = MKVExeHelper.ExecuteMKVInfo(state.mkvInfoExe, state.fLocalSource.getAbsolutePath());
             if( tracks == null ) {
                 RKLog.Log( "EncodeOriginal: ExecuteMKVInfo failed." );
                 return null;
@@ -533,7 +538,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
                 fFinalSub = new File(FileUtils.PathCombine(fDir.getAbsolutePath(),subBase + "." + subExt));
 
                 RKLog.Log("Extracting subtitle to %s.\n",fSub.getName());
-                nr = HBXExeHelper.ExtractMKVSubtitle( exePath, mkvPath, fSub.getAbsolutePath(), t.TrackId, callback );
+                nr = MKVExeHelper.ExtractMKVSubtitle(exePath, mkvPath, fSub.getAbsolutePath(), t.TrackId, callback);
                 if( nr != 0 ) {
                     RKLog.Log("ExtractMKVSubtitle to %s failed.\n", fSub.getName());
                     continue;
@@ -683,7 +688,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         boolean             bFullHD;
 
         params = new HandBrakeExeParams();
-        sourceExtension = com.rkuo.io.File.GetExtension(params.Input);
+        sourceExtension = com.rkuo.io.File.GetExtension(sourceFilename);
 
         bStrictAnamorphic = true;
         if( xRes > MAX_XRES || yRes > MAX_YRES ) {
@@ -718,10 +723,10 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         params.Encoder = HandBrakeExeParams.VideoEncoderOption.X264;
 
         // high profile 3.1 settings
-        params.x264opts = "b-adapt=2:rc-lookahead=50:vbv-maxrate=14000:vbv-bufsize=14000";
+        params.EncodingOptions = "b-adapt=2:rc-lookahead=50:vbv-maxrate=14000:vbv-bufsize=14000";
         if( bFullHD == true ) {
             // high profile 4.0 settings
-            params.x264opts = "b-adapt=2:rc-lookahead=50:vbv-maxrate=25000:vbv-bufsize=20000";
+            params.EncodingOptions = "b-adapt=2:rc-lookahead=50:vbv-maxrate=25000:vbv-bufsize=20000";
         }
 
         // encode everything to mono or (usually) stereo aac.  aac tracks must come first
@@ -784,10 +789,10 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
                 params.SrtFiles.add(st.Filename);
                 params.SrtCodesets.add("UTF-8");
                 if( st.Language.length() == 0 ) {
-                    params.SrtCodesets.add("und");
+                    params.SrtLanguages.add("und");
                 }
                 else {
-                    params.SrtCodesets.add(st.Language);
+                    params.SrtLanguages.add(st.Language);
                 }
                 if( st.Default == true ) {
                     params.SrtDefault = x+1;

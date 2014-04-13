@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.shared;
 
 import com.rkuo.xml.XMLHelper;
 import org.w3c.dom.Document;

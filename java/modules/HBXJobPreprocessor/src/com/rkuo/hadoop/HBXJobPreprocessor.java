@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.rkuo.handbrake.*;
 import com.rkuo.logging.RKLog;
+import com.rkuo.mkvtoolnix.MKVExeHelper;
+import com.rkuo.mkvtoolnix.MKVTrack;
+import com.rkuo.shared.HBXJobPreprocessorBase;
 import com.rkuo.util.FileUtils;
 import com.rkuo.util.Misc;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.*;
 
 public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
@@ -202,7 +204,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
                     // remux the file
                     File fRemux = new File(FileUtils.PathCombine(params.Remux, FileUtils.getNameWithoutExtension(fSelected.getName()) + ".r.mkv"));
                     File fMkvMerge = new File(params.LocalMkvMerge);
-                    int nr = HBXExeHelper.ExecuteMkvMergeRemux(fMkvMerge.getAbsolutePath(), fSelected.getAbsolutePath(), fRemux.getAbsolutePath());
+                    int nr = MKVExeHelper.ExecuteMkvMergeRemux(fMkvMerge.getAbsolutePath(), fSelected.getAbsolutePath(), fRemux.getAbsolutePath());
                     if( nr != 0 ) {
                         RKLog.Log("mkvmerge remux failed: %s", fSelected.getAbsolutePath());
                         throw new Exception();
@@ -216,7 +218,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
 
             // execute mkvinfo on the repaired version, not the original (original muxes often contain bad metadata)
             if( com.rkuo.io.File.GetExtension(fRepaired.getAbsolutePath()).compareToIgnoreCase("mkv") == 0 ) {
-                mkvTracks = HBXExeHelper.ExecuteMKVInfo(params.LocalMkvInfo, fRepaired.getAbsolutePath());
+                mkvTracks = MKVExeHelper.ExecuteMKVInfo(params.LocalMkvInfo, fRepaired.getAbsolutePath());
                 if( mkvTracks == null ) {
                     RKLog.Log("mkvinfo failed: %s", fRepaired.getAbsolutePath());
                     throw new Exception();
@@ -325,7 +327,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
         if( com.rkuo.io.File.GetExtension(fOriginal.getAbsolutePath()).compareToIgnoreCase("mkv") == 0 ) {
             if( fOriginal.getAbsolutePath().toLowerCase().endsWith(".r.mkv") == false ) {
                 // remux the file
-                int nr = HBXExeHelper.ExecuteMkvMergeRemux( fMkvMerge.getAbsolutePath(), fOriginal.getAbsolutePath(), fRemux.getAbsolutePath() );
+                int nr = MKVExeHelper.ExecuteMkvMergeRemux(fMkvMerge.getAbsolutePath(), fOriginal.getAbsolutePath(), fRemux.getAbsolutePath());
                 if( nr != 0 ) {
                     RKLog.Log("mkvmerge remux failed: %s", fOriginal.getAbsolutePath());
                     RKLog.Log("Moving %s to failed directory for manual inspection.", fOriginal.getAbsolutePath());
@@ -342,7 +344,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
             }
 
             // execute mkvinfo on the remux, not the original (original muxes often contain bad metadata)
-            mkvTracks = HBXExeHelper.ExecuteMKVInfo( params.LocalMkvInfo, fRemux.getAbsolutePath() );
+            mkvTracks = MKVExeHelper.ExecuteMKVInfo(params.LocalMkvInfo, fRemux.getAbsolutePath());
             if( mkvTracks == null ) {
                 RKLog.Log("mkvinfo failed: %s", fOriginal.getAbsolutePath());
                 RKLog.Log("Moving %s to failed directory for manual inspection.", fOriginal.getAbsolutePath());
@@ -642,7 +644,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
         if( com.rkuo.io.File.GetExtension(fOriginal.getAbsolutePath()).compareToIgnoreCase("mkv") == 0 ) {
             if( fOriginal.getAbsolutePath().toLowerCase().endsWith(".r.mkv") == false ) {
                 // remux the file
-                int nr = HBXExeHelper.ExecuteMkvMergeRemux( fMkvMerge.getAbsolutePath(), fOriginal.getAbsolutePath(), fRemux.getAbsolutePath() );
+                int nr = MKVExeHelper.ExecuteMkvMergeRemux(fMkvMerge.getAbsolutePath(), fOriginal.getAbsolutePath(), fRemux.getAbsolutePath());
                 if( nr != 0 ) {
                     RKLog.Log("mkvmerge remux failed: %s", fOriginal.getAbsolutePath());
                     RKLog.Log("Moving %s to failed directory for manual inspection.", fOriginal.getAbsolutePath());
@@ -661,7 +663,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
             normalizedSource = fRemux.getAbsolutePath();
 
             // execute mkvinfo on the remux, not the original (original muxes often contain bad metadata)
-            mkvTracks = HBXExeHelper.ExecuteMKVInfo( params.LocalMkvInfo, fRemux.getAbsolutePath() );
+            mkvTracks = MKVExeHelper.ExecuteMKVInfo(params.LocalMkvInfo, fRemux.getAbsolutePath());
             if( mkvTracks == null ) {
                 RKLog.Log("mkvinfo failed: %s", fOriginal.getAbsolutePath());
                 RKLog.Log("Moving %s to failed directory for manual inspection.", fOriginal.getAbsolutePath());
@@ -952,7 +954,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
 
         RKLog.Log("Generating an mkv with an AC3 track (%s).", fAC3.getAbsolutePath());
 //        exitCode = HBXExeHelper.ExecuteMKVDTS2AC3(conversionScript, fWorkingDir.getAbsolutePath(), fOriginal.getAbsolutePath(), tPreferred.TrackId);
-        exitCode = HBXExeHelper.ConvertDTSToAC3(
+        exitCode = MKVExeHelper.ConvertDTSToAC3(
                 fOriginal.getAbsolutePath(), fAC3.getAbsolutePath(),
                 fMkvExtract.getAbsolutePath(), fMkvMerge.getAbsolutePath(),
                 fAften.getAbsolutePath(), fDcaDec.getAbsolutePath(),

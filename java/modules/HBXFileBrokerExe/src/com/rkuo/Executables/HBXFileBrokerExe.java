@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import com.rkuo.handbrake.HBXImporterParams;
+import com.rkuo.shared.HBXImporterParams;
 import com.rkuo.logging.RKLog;
 import com.rkuo.util.*;
 

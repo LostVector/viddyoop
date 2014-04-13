@@ -2,14 +2,11 @@ package com.rkuo.Executables;
 
 import com.rkuo.handbrake.*;
 import com.rkuo.logging.RKLog;
+import com.rkuo.shared.HBXEncodingStats;
 import com.rkuo.util.FileUtils;
 import com.rkuo.util.Misc;
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Date;
 
 /**
  * Created by IntelliJ IDEA.

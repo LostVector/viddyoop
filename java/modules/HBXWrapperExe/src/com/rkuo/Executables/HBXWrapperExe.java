@@ -14,6 +14,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 import com.rkuo.logging.RKLog;
+import com.rkuo.shared.HBXWrapperConfig;
 import com.rkuo.threading.ThreadState;
 import com.rkuo.util.*;
 import com.rkuo.handbrake.*;
@@ -75,7 +76,7 @@ public class HBXWrapperExe {
             // pass everything to a remote invocation
 
             String  sConfig;
-            HBXWrapperConfig    hbxConfig;
+            HBXWrapperConfig hbxConfig;
             boolean             br;
             File    f;
 

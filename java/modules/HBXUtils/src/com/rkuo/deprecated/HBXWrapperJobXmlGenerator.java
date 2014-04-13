@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.deprecated;
 
 import com.rkuo.handbrake.HBXWrapperParams;
 

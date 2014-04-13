@@ -2,10 +2,8 @@ package com.rkuo.handbrake;
 
 import com.rkuo.threading.RKEvent;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 /**
  * Created with IntelliJ IDEA.
@@ -39,7 +37,7 @@ public class HandBrakeExeParams {
     public VideoEncoderOption Encoder;
     public Double Quality;
     public VideoRateOption Rate;
-    public String x264opts;
+    public String EncodingOptions;
 
     // audio
     public List<Integer> AudioTracks;
@@ -103,7 +101,7 @@ public class HandBrakeExeParams {
         Rate = VideoRateOption.FRAMERATE_VARIABLE;
         RateControl = VideoFrameRateControlOption.DEFAULT;
         Encoder = VideoEncoderOption.DEFAULT;
-        x264opts = "";
+        EncodingOptions = "";
 
         AudioTracks = new ArrayList<Integer>();
         AudioEncoders = new ArrayList<AudioEncoderOption>();

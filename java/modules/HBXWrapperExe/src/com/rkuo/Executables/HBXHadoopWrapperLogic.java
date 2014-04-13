@@ -1,6 +1,6 @@
 package com.rkuo.Executables;
 
-import com.rkuo.handbrake.HBXEncodingStats;
+import com.rkuo.shared.HBXEncodingStats;
 import com.rkuo.handbrake.HBXWrapperParams;
 import com.rkuo.handbrake.IHandBrakeExeCallback;
 import com.rkuo.logging.RKLog;

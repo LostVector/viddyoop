@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.shared;
 
 import java.util.ArrayList;
 import java.util.List;

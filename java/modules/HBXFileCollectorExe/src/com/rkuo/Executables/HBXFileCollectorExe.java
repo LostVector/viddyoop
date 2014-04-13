@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.rkuo.handbrake.HBXFileCollectorParams;
+import com.rkuo.shared.HBXFileCollectorParams;
 import com.rkuo.logging.RKLog;
 import com.rkuo.util.*;
 

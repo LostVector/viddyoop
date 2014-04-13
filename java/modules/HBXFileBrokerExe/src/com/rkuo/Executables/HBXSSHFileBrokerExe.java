@@ -1,6 +1,6 @@
 package com.rkuo.Executables;
 
-import com.rkuo.handbrake.HBXImporterParams;
+import com.rkuo.shared.HBXImporterParams;
 import com.rkuo.logging.RKLog;
 import com.rkuo.net.ssh.Scp;
 import com.rkuo.net.ssh.Sftp;
@@ -8,7 +8,6 @@ import com.rkuo.util.CommandLineParser;
 import com.rkuo.util.FileUtils;
 import com.rkuo.util.ShutdownThread;
 
-import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;

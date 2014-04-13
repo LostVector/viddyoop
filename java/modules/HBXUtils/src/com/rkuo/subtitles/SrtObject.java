@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.subtitles;
 
 import java.util.ArrayList;
 import java.util.List;

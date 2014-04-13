@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.shared;
 
 /**
  * Created by IntelliJ IDEA.

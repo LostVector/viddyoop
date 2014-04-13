@@ -1,5 +1,8 @@
 package com.rkuo.handbrake;
 
+import com.rkuo.mkvtoolnix.MKVExeHelper;
+import com.rkuo.mkvtoolnix.MKVTrack;
+import com.rkuo.mp4box.MP4BoxHelper;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,7 +18,7 @@ public class HBXExeHelperTest {
 
         MKVTrack[] tracks;
 
-        tracks = HBXExeHelper.ExecuteMKVInfo("/Applications/Mkvtoolnix.app/Contents/MacOS/mkvinfo", "/Users/root/Downloads/hbxtest/test.mkv");
+        tracks = MKVExeHelper.ExecuteMKVInfo("/Applications/Mkvtoolnix.app/Contents/MacOS/mkvinfo", "/Users/root/Downloads/hbxtest/test.mkv");
         Assert.assertEquals( tracks.length, 9 );
         return;
     }
@@ -36,7 +39,7 @@ public class HBXExeHelperTest {
         MKVTrack tPreferred = new MKVTrack();
 
         tPreferred.TrackId = 1;
-        returnCode = HBXExeHelper.ConvertDTSToAC3(src,tgt,mkvExtract,mkvMerge,aften,dcadec,working,tPreferred);
+        returnCode = MKVExeHelper.ConvertDTSToAC3(src, tgt, mkvExtract, mkvMerge, aften, dcadec, working, tPreferred);
         Assert.assertTrue( returnCode == 0 );
         return;
     }

@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.subtitles;
 
 import com.rkuo.logging.RKLog;
 import com.rkuo.text.UnicodeInputStream;

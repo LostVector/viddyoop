@@ -1,4 +1,4 @@
-package com.rkuo.handbrake;
+package com.rkuo.deprecated;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
