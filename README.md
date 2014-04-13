@@ -1,4 +1,4 @@
-vidoop
+viddyoop
 ======
 
 Distributed video analysis and transcoding system leveraging Hadoop
