@@ -1,0 +1,16 @@
+<mapreduce>
+  <username>rkuo</username>
+  <password>secure_password_here</password>
+  <hostname>rkuo-vm.mv.rkuo.com</hostname>
+  <resources_username>rkuo</resources_username>
+  <resources_password>secure_password_here</resources_password>
+  <resources_hostname>rkuo-vm.mv.rkuo.com</resources_hostname>
+  <resources_location>/home/root/cloudera/hadoop_resources</resources_location>
+  <handbrake>HandBrakeCLI-x64-0.9.8-ubuntu</handbrake>
+  <mkvinfo>mkvinfo-5.7.0-ubuntu</mkvinfo>
+  <mkvextract>mkvextract-5.7.0-ubuntu</mkvextract>
+  <ssaconverter>ssa2srt.py</ssaconverter>
+  <primary_language>english</primary_language>
+  <secondary_language>japanese</secondary_language>
+</mapreduce>
+

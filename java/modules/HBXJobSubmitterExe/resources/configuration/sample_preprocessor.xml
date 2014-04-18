@@ -1,0 +1,20 @@
+<preprocessor>
+  <input_new>/home/root/cloudera/preprocessor/input_new</input_new>
+  <input_reprocess>/home/root/cloudera/preprocessor/input_reprocess</input_reprocess>
+  <remux>/home/root/cloudera/preprocessor/scratch</remux>
+  <output_archive_720>/home/root/cloudera/preprocessor/output_archive_720p</output_archive_720>
+  <output_archive_1080>/home/root/cloudera/preprocessor/output_archive_1080p</output_archive_1080>
+  <output_failed>/home/root/cloudera/preprocessor/output_failed</output_failed>
+  <output_success>/home/root/cloudera/hadoop/input</output_success>
+  <scratch>/tmp/mkvdts2ac3</scratch>
+  <wakeonlan>/usr/sbin/etherwake</wakeonlan>
+  <handbrake>/usr/bin/HandBrakeCLI</handbrake>
+  <mkvinfo>/usr/bin/mkvinfo</mkvinfo>
+  <mkvextract>/usr/bin/mkvextract</mkvextract>
+  <mkvmerge>/usr/bin/mkvmerge</mkvmerge>
+  <aften>/usr/bin/aften</aften>
+  <dcadec>/usr/bin/dcadec</dcadec>
+  <primary_language>eng</primary_language>
+  <secondary_language>jpn</secondary_language>
+</preprocessor>
+

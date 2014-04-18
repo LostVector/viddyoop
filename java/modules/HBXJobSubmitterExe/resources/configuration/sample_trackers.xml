@@ -1,0 +1,10 @@
+<RkTracker>
+ <trackers>
+  <Hostname>cloudera-node-02.mv.rkuo.com</Hostname>
+  <Username>root</Username>
+  <Password>secure_password_here</Password>
+  <MacAddress>001122334455</MacAddress>
+  <Managed>true</Managed>
+ </trackers>
+</RkTracker>
+

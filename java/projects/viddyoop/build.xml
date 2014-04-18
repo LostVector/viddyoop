@@ -1,0 +1,30 @@
+<project name="viddyoop" default="bundle" basedir=".">
+    <description>
+        simple example build file
+    </description>
+  <target name="bundle" description="" >
+      <mkdir dir="./out/bundle"/>
+      <mkdir dir="./out/bundle/preprocessor"/>
+      <mkdir dir="./out/bundle/preprocessor/input_new"/>
+      <mkdir dir="./out/bundle/preprocessor/input_reprocess"/>
+      <mkdir dir="./out/bundle/preprocessor/output_archive_720p"/>
+      <mkdir dir="./out/bundle/preprocessor/output_archive_1080p"/>
+      <mkdir dir="./out/bundle/preprocessor/output_failed"/>
+      <mkdir dir="./out/bundle/preprocessor/scratch"/>
+      <mkdir dir="./out/bundle/hadoop"/>
+      <mkdir dir="./out/bundle/hadoop/input"/>
+      <mkdir dir="./out/bundle/hadoop/output"/>
+      <mkdir dir="./out/bundle/hadoop/logs"/>
+      <copy file="./out/artifacts/HBXFileBroker/HBXFileBroker.jar" todir="./out/bundle"/>
+      <copy file="./out/artifacts/HBXFileCollector/HBXFileCollector.jar" todir="./out/bundle"/>
+      <copy file="./out/artifacts/HBXJobPreprocessor/HBXJobPreprocessor.jar" todir="./out/bundle"/>
+      <copy file="./out/artifacts/HBXMapReduce/HBXMapReduce.jar" todir="./out/bundle"/>
+      <copy file="./out/artifacts/HBXJobSubmitter/HBXJobSubmitter.jar" todir="./out/bundle"/>
+      <copy todir="./out/bundle">
+              <fileset dir="./out/production/HBXJobSubmitterExe/configuration/" includes="**/*" />
+      </copy>
+      <copy todir="./out/bundle">
+              <fileset dir="./out/production/HBXJobSubmitterExe/scripts/" includes="**/*" />
+      </copy>
+  </target>
+</project>
