@@ -67,6 +67,32 @@ public class MKVExeHelper {
         return exitCode;
     }
 
+    public static int ExecuteMkvMergeSplit( String mkvMergeExe, String sourceFilename, String targetFilename ) {
+
+        ArrayList<String> cmdArgs;
+        int exitCode;
+
+        // remux the file to avoid bugs
+        RKLog.Log("Remuxing file to avoid bugs.");
+        cmdArgs = new ArrayList<String>();
+        cmdArgs.add( mkvMergeExe );
+        cmdArgs.add( "-q" );
+
+        cmdArgs.add( "-o" );
+        cmdArgs.add( targetFilename );
+        cmdArgs.add( sourceFilename );
+
+        Misc.printArgs(cmdArgs.toArray(new String[cmdArgs.size()]));
+        exitCode = Misc.ExecuteProcess( cmdArgs.toArray( new String[cmdArgs.size()]), null, false, null, null );
+        if( exitCode != 0 ) {
+            RKLog.Log("mkvmerge remux failed.");
+            return exitCode;
+        }
+
+        RKLog.Log("Remuxing complete.");
+        return exitCode;
+    }
+
     public static int ExecuteMKVDTS2AC3( String scriptPath, String workingDir, String sourceFilename, Integer audioTrack ) {
 
         Process             process;
