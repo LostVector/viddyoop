@@ -1,5 +1,6 @@
 package com.rkuo.handbrake;
 
+import com.rkuo.ffmpeg.FFMpegExeHelper;
 import com.rkuo.mkvtoolnix.MKVExeHelper;
 import com.rkuo.mkvtoolnix.MKVTrack;
 import com.rkuo.mp4box.MP4BoxHelper;
@@ -116,6 +117,32 @@ public class HBXExeHelperTest {
 
         br = MP4BoxHelper.CleanRepairM4VSubtitlesWithLinefeeds( testFilename, mp4box, tempDirectory );
         Assert.assertTrue( br );
+        return;
+    }
+
+    @Test
+    public void testGetExactFrameCount() {
+
+        Long frames;
+
+        String exe = "/Users/root/dev/bin/ffmpeg-2.2.1/ffmpeg";
+        String source = "/Volumes/WDPassport/test.mkv";
+
+        frames = FFMpegExeHelper.GetExactFrameCount(exe, source);
+        Assert.assertNotNull( frames );
+        System.out.format("%d frames found.\n",frames);
+        return;
+    }
+
+    @Test
+    public void testExecuteMkvMergeSplit() {
+
+        List<String> files;
+        String mkvmerge = "/Applications/Mkvtoolnix.app/Contents/MacOS/mkvmerge";
+        String source = "/Volumes/WDPassport/test.mkv";
+
+        files = MKVExeHelper.Split(mkvmerge, source);
+        Assert.assertNotNull(files);
         return;
     }
 }

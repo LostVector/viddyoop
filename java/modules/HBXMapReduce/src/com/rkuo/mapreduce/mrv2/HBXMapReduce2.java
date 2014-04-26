@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.rkuo.hadoop.HBXMapReduceBase;
 import com.rkuo.handbrake.HBXWrapperParams;
+import com.rkuo.mapreduce.mrx264.X264OutputFormat;
 import com.rkuo.util.CommandLineParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -60,6 +61,7 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
 
         hbxwp = HBXWrapperParams.GetHBXWrapperParams(clp);
         if( hbxwp == null ) {
+            System.out.format("HBXWrapperParams.GetHBXWrapperParams failed. You may be missing required parameters in your configuration file.\n");
             return 1;
         }
 
@@ -96,20 +98,20 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
 
                 public Void run() throws Exception {
 
-                    Configuration conf = new Configuration();
-                    conf.set("fs.defaultFS", hdfsUrl);
-                    conf.set("hadoop.job.ugi", "hdfs");
+                Configuration conf = new Configuration();
+                conf.set("fs.defaultFS", hdfsUrl);
+                conf.set("hadoop.job.ugi", "hdfs");
 
-                    FileSystem fs = FileSystem.get(conf);
+                FileSystem fs = FileSystem.get(conf);
 
-                    // will not error if path exists
-                    fs.mkdirs(new Path(String.format("/user/%s/input",HADOOP_USER)));
-                    fs.mkdirs(new Path(String.format("/user/%s/output",HADOOP_USER)));
+                // will not error if path exists
+                fs.mkdirs(new Path(String.format("/user/%s/input", HADOOP_USER)));
+                fs.mkdirs(new Path(String.format("/user/%s/output", HADOOP_USER)));
 
-                    fs.setOwner(new Path(String.format("/user/%s",HADOOP_USER)),HADOOP_USER,HADOOP_USER);
-                    fs.setOwner(new Path(String.format("/user/%s/input",HADOOP_USER)),HADOOP_USER,HADOOP_USER);
-                    fs.setOwner(new Path(String.format("/user/%s/output",HADOOP_USER)),HADOOP_USER,HADOOP_USER);
-                    return null;
+                fs.setOwner(new Path(String.format("/user/%s", HADOOP_USER)), HADOOP_USER, HADOOP_USER);
+                fs.setOwner(new Path(String.format("/user/%s/input", HADOOP_USER)), HADOOP_USER, HADOOP_USER);
+                fs.setOwner(new Path(String.format("/user/%s/output", HADOOP_USER)), HADOOP_USER, HADOOP_USER);
+                return null;
                 }
             });
         }
@@ -165,9 +167,9 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
 
         // TextInputFormat generates inputs of LongWritable (character position), Text (each line).  See docs.
         job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
+        job.setOutputFormatClass(X264OutputFormat.class);
         TextInputFormat.setInputPaths(job, new Path(inputPath));
-        TextOutputFormat.setOutputPath(job, new Path(outputPath));
+        X264OutputFormat.setOutputPath(job, new Path(outputPath));
 
         // this setJarByClass call is critical.  I don't know why the new JobConf call above doesn't handle this.
         job.setJarByClass(HBXMapper.class);
@@ -175,7 +177,7 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
 
         // submit is non-blocking
         job.submit();
-        System.out.format("Job submitted for %s.\n", f.getName());
+        System.out.format("Job submitted for %s (id = %s).\n", f.getName(), job.getJobID().toString());
 
         return 0;
     }

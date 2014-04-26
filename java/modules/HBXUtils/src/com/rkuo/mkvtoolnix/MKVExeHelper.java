@@ -8,6 +8,7 @@ import com.rkuo.util.Misc;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -67,30 +68,95 @@ public class MKVExeHelper {
         return exitCode;
     }
 
-    public static int ExecuteMkvMergeSplit( String mkvMergeExe, String sourceFilename, String targetFilename ) {
+    public static List<String> Split(String mkvMergeExe, String sourceFilename) {
 
-        ArrayList<String> cmdArgs;
+        List<String> files;
+        List<String> cmdArgs;
+        String dir, base, extension;
         int exitCode;
 
         // remux the file to avoid bugs
-        RKLog.Log("Remuxing file to avoid bugs.");
+        RKLog.Log("Splitting %s.", sourceFilename);
+
+        files = new ArrayList<String>();
+
+        dir = new File(sourceFilename).getParent();
+        base = FileUtils.getNameWithoutExtension(sourceFilename);
+        extension = com.rkuo.io.File.GetExtension(sourceFilename);
+
         cmdArgs = new ArrayList<String>();
         cmdArgs.add( mkvMergeExe );
         cmdArgs.add( "-q" );
+        cmdArgs.add( "--no-audio" );
+        cmdArgs.add( "--no-subtitles" );
+        cmdArgs.add( "--no-buttons" );
+        cmdArgs.add( "--split" );
+        cmdArgs.add( "300s" );
 
         cmdArgs.add( "-o" );
-        cmdArgs.add( targetFilename );
+        cmdArgs.add( FileUtils.PathCombine(dir, base + "-part." + extension) );
         cmdArgs.add( sourceFilename );
 
         Misc.printArgs(cmdArgs.toArray(new String[cmdArgs.size()]));
         exitCode = Misc.ExecuteProcess( cmdArgs.toArray( new String[cmdArgs.size()]), null, false, null, null );
         if( exitCode != 0 ) {
-            RKLog.Log("mkvmerge remux failed.");
-            return exitCode;
+            RKLog.Log("mkvmerge split failed.");
+            return null;
         }
 
-        RKLog.Log("Remuxing complete.");
-        return exitCode;
+        int x = 1;
+
+        do {
+            String splitName = FileUtils.PathCombine(dir,String.format("%s-part-%03d.%s",base,x,extension));
+            File f = new File(splitName);
+            if( f.exists() == false ) {
+                break;
+            }
+
+            RKLog.Log("Found chunk %s.",splitName);
+            files.add(splitName);
+            x++;
+
+            if( x >= 1000 ) {
+                RKLog.Log("Too many split files found! Failing out.");
+                return null;
+            }
+        } while ( true );
+
+        RKLog.Log("Split complete. %d chunks found.", files.size());
+        return files;
+    }
+
+
+    public static String ExtractTimecodes(String mkvExtractExe, String sourceFilename,Integer trackId) {
+
+        List<String> cmdArgs;
+        String timecode;
+        String path, extension;
+        int exitCode;
+
+        // remux the file to avoid bugs
+        RKLog.Log("Extracting timecodes for %s.", sourceFilename);
+
+        path = FileUtils.getAbsolutePathWithoutExtension(sourceFilename);
+        extension = com.rkuo.io.File.GetExtension(sourceFilename);
+        timecode = String.format("%s-tc-%d.%s",path,trackId,extension);
+
+        cmdArgs = new ArrayList<String>();
+        cmdArgs.add( mkvExtractExe );
+        cmdArgs.add( "timecodes_v2" );
+        cmdArgs.add( sourceFilename );
+        cmdArgs.add( String.format("%d:%s",trackId,timecode));
+
+        Misc.printArgs(cmdArgs.toArray(new String[cmdArgs.size()]));
+        exitCode = Misc.ExecuteProcess( cmdArgs.toArray( new String[cmdArgs.size()]), null, false, null, null );
+        if( exitCode != 0 ) {
+            RKLog.Log("mkvextract timecodes_v2 failed.");
+            return null;
+        }
+
+        RKLog.Log("ExtractTimecodes succeeded.", sourceFilename);
+        return timecode;
     }
 
     public static int ExecuteMKVDTS2AC3( String scriptPath, String workingDir, String sourceFilename, Integer audioTrack ) {
@@ -442,7 +508,7 @@ public class MKVExeHelper {
         return 0;
     }
 
-    public static int ExtractMKVSubtitle( String exePath, String mkvPath, String subPath, int trackId, IHandBrakeExeCallback callback ) {
+    public static int ExtractSubtitle(String exePath, String mkvPath, String subPath, int trackId, IHandBrakeExeCallback callback) {
 
         ArrayList<String>   cmdArgs;
         int                 exitCode;

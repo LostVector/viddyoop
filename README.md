@@ -39,3 +39,16 @@ To build:
 - Click on Build/Rebuild project.
 - Visit the projects/viddyoop/out/bundle folder to get at the bundled output.
 
+
+The iTunes preprocessor plugin relies on the following binaries
+- HandBrakeCLI (for scanning the input file)
+- mkvinfo (for scanning the input file)
+- aften (for AC3 encoding)
+- libdca (for DTS decoding)
+- mkvmerge (for repairing MKV files)
+- mkvextract (for extracting track information)
+
+The iTunes mapreduce plugin relies on the following binaries:
+- HandBrakeCLI (for scanning the input file and encoding it)
+- mkvinfo (for scanning the input file)
+- mkvextract (for extracting subtitles and other track information)

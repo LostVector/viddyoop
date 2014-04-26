@@ -1,0 +1,20 @@
+viddyoop
+
+Viddyoop is under the MIT License.
+
+Jackson Project
+- https://github.com/FasterXML/jackson
+- Apache License
+
+jsch
+- http://www.jcraft.com/jsch/
+- BSD license - http://www.jcraft.com/jsch/LICENSE.txt
+
+jsoup
+- http://jsoup.org
+- MIT license - http://jsoup.org/license
+
+junit
+- http://junit.org
+- Eclipse Public License - https://github.com/junit-team/junit/blob/master/LICENSE.txt
+

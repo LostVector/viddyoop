@@ -15,10 +15,9 @@
     <orderEntry type="module" module-name="RKSSHUtils" />
     <orderEntry type="library" name="hadoop-client-cdh-4.5.0" level="project" />
     <orderEntry type="library" scope="TEST" name="junit-4.10" level="project" />
-    <orderEntry type="library" name="jsoup-1.7.2" level="project" />
-    <orderEntry type="library" name="jtidy-r938" level="project" />
     <orderEntry type="library" name="jackson-2.3" level="project" />
     <orderEntry type="library" name="woodstox-core-asl-4.2.0" level="project" />
+    <orderEntry type="library" name="jsoup-1.7.2" level="project" />
   </component>
 </module>
 

@@ -84,6 +84,14 @@ public class HBXHadoopWrapperLogic extends HBXBaseWrapperLogic {
             return false;
         }
 
+        fTemp = new File(hbxwp.MKVMerge);
+        state.mkvMergeExe = FileUtils.PathCombine(hbxwp.TempDirectory, fTemp.getName());
+        br = SetFilePermissions( state.mkvMergeExe );
+        if (br == false) {
+            RKLog.Log("SetFilePermissions on %s failed.", state.mkvMergeExe );
+            return false;
+        }
+
         fTemp = new File(hbxwp.MKVExtract);
         state.mkvExtractExe = FileUtils.PathCombine(hbxwp.TempDirectory, fTemp.getName());
         br = SetFilePermissions( state.mkvExtractExe );

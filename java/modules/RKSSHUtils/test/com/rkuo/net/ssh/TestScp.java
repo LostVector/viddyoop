@@ -43,7 +43,7 @@ public class TestScp {
         Boolean br;
 
         try {
-            Scp scp = new Scp( "", "", "" );
+            Scp scp = new Scp( "username", "password", "hostname" );
             URL url = this.getClass().getResource("test.xml");
             if( url == null ) {
                 System.out.println( "test.xml not found." );
@@ -51,7 +51,7 @@ public class TestScp {
             }
 
             System.out.println( "Test file: " + url.getPath() );
-            br = scp.ScpTo(url.getPath(), "", null);
+            br = scp.ScpTo(url.getPath(), "/home/root/test2.xml", null);
         }
         catch( Exception ex ) {
             br = false;

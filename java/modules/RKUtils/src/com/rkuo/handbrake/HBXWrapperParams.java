@@ -13,6 +13,7 @@ public class HBXWrapperParams {
 //    public String   Resources;
     public String   Handbrake_x64;
     public String   MKVInfo;
+    public String   MKVMerge;
     public String   MKVExtract;
     public String   SSAConverter;
 
@@ -44,6 +45,7 @@ public class HBXWrapperParams {
 
         Handbrake_x64 = "";
         MKVInfo = "";
+        MKVMerge = "";
         MKVExtract = "";
         SSAConverter = "";
 
@@ -135,6 +137,13 @@ public class HBXWrapperParams {
         }
 
         hbxwp.MKVInfo = clp.GetString("mkvinfo");
+
+        // mkvmerge
+        if( clp.Contains("mkvmerge") == false ) {
+            return null;
+        }
+
+        hbxwp.MKVMerge = clp.GetString("mkvmerge");
 
         // mkvextract
         if( clp.Contains("mkvextract") == false ) {

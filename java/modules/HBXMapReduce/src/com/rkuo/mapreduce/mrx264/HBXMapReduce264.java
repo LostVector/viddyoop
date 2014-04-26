@@ -36,7 +36,7 @@ public class HBXMapReduce264 extends HBXMapReduceBase {
             mapSettings = xmlMapper.readValue(new File(filename), new TypeReference<HashMap<String,String>>(){});
         }
         catch( IOException ioex ) {
-            System.out.println("HBXMapReduce2.LoadSettings failed.");
+            System.out.println("HBXMapReduce264.LoadSettings failed.");
             return mapSettings;
         }
 
@@ -50,7 +50,7 @@ public class HBXMapReduce264 extends HBXMapReduceBase {
         File f;
         final String HADOOP_USER = System.getenv("HADOOP_USER_NAME");
 
-        System.out.format("HBXMapReduce2::run begins.\n");
+        System.out.format("HBXMapReduce264::run begins.\n");
 
         Configuration c = getConf();
 
@@ -179,6 +179,7 @@ public class HBXMapReduce264 extends HBXMapReduceBase {
         c.set("resources_location",hbxwp.ResourcesLocation);
         c.set("handbrake", hbxwp.Handbrake_x64);
         c.set("mkvinfo", hbxwp.MKVInfo);
+        c.set("mkvmerge", hbxwp.MKVMerge);
         c.set("mkvextract", hbxwp.MKVExtract);
         c.set("ssaconverter", hbxwp.SSAConverter);
 

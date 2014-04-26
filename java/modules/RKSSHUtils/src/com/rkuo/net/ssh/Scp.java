@@ -91,7 +91,7 @@ public class Scp extends JschBase {
             File _lfile = new File(local);
 
             if (ptimestamp == true) {
-                command = "T " + (_lfile.lastModified() / 1000) + " 0";
+                command = "T" + (_lfile.lastModified() / 1000) + " 0";
                 // The access time should be sent here,
                 // but it is not accessible with JavaAPI ;-<
                 command += (" " + (_lfile.lastModified() / 1000) + " 0\n");

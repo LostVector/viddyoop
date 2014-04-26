@@ -41,7 +41,7 @@ public class HBXReducer264 extends Reducer<LongWritable,Text,LongWritable,Text> 
     protected String SSAConverter;
 
     @Override
-    protected void setup(Reducer.Context context) throws IOException, InterruptedException {
+    protected void setup(Context context) throws IOException, InterruptedException {
         Configuration c = context.getConfiguration();
 
         Username = c.get("username");
@@ -65,31 +65,13 @@ public class HBXReducer264 extends Reducer<LongWritable,Text,LongWritable,Text> 
     }
 
     @Override
-	public void reduce(LongWritable key, Iterable<Text> values, Reducer.Context context) throws IOException, InterruptedException {
+	public void reduce(LongWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 
         boolean br;
 
         File d = new File(".");
 
         System.out.format("HBXReducer::reduce started\n");
-
-//        while( values.hasNext() == true ) {
-//            Text val = values.next();
-//            output.collect(key, val);
-//        }
-/*
-        Configuration config = new Configuration();
-        FileSystem hdfs = FileSystem.get(config);
-        File d = new File(".");
-
-        System.out.println("Current directory's canonical path: " + d.getCanonicalPath());
-        Path src = new Path("/user/root/handbrake/HandBrakeCLI-0.9.8");
-        Path dst = new Path(d.getCanonicalPath() + Path.SEPARATOR_CHAR + "HandBrakeCLI-0.9.8");
-
-        PrintFiles(d.getCanonicalPath());
-        hdfs.copyToLocalFile(false, src, dst);
-        PrintFiles(d.getCanonicalPath());
-        */
 
         HBXWrapperParams hbxwp;
 
@@ -126,8 +108,6 @@ public class HBXReducer264 extends Reducer<LongWritable,Text,LongWritable,Text> 
         if( br == false ) {
             throw new IOException("HBXHadoopWrapperLogic::Execute failed.");
         }
-
-//          HBXExeHelper.ExecuteHandbrake095ForAppleTV2012();
 
         System.out.format("HBXReducer::reduce finished\n");
 	}

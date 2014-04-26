@@ -8,6 +8,7 @@
   <resources_location>/home/root/cloudera/hadoop_resources</resources_location>
   <handbrake>HandBrakeCLI-x64-0.9.8-ubuntu</handbrake>
   <mkvinfo>mkvinfo-5.7.0-ubuntu</mkvinfo>
+  <mkvmerge>mkvmerge-5.7.0-ubuntu</mkvmerge>
   <mkvextract>mkvextract-5.7.0-ubuntu</mkvextract>
   <ssaconverter>ssa2srt.py</ssaconverter>
   <primary_language>english</primary_language>

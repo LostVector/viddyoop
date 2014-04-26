@@ -12,7 +12,7 @@ import java.io.File;
  * To change this template use File | Settings | File Templates.
  */
 public class HBXWrapperLogicState {
-        public String                  handbrakeExe, mkvInfoExe, mkvExtractExe, ssaConverterExe;
+        public String                  handbrakeExe, mkvInfoExe, mkvMergeExe, mkvExtractExe, ssaConverterExe;
         public File                    fLocalHandBrake32, fLocalHandBrake64;
         public String                  Username, Password, Hostname;
         public String                  ResourcesUsername, ResourcesPassword, ResourcesHostname;

@@ -538,9 +538,9 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
                 fFinalSub = new File(FileUtils.PathCombine(fDir.getAbsolutePath(),subBase + "." + subExt));
 
                 RKLog.Log("Extracting subtitle to %s.\n",fSub.getName());
-                nr = MKVExeHelper.ExtractMKVSubtitle(exePath, mkvPath, fSub.getAbsolutePath(), t.TrackId, callback);
+                nr = MKVExeHelper.ExtractSubtitle(exePath, mkvPath, fSub.getAbsolutePath(), t.TrackId, callback);
                 if( nr != 0 ) {
-                    RKLog.Log("ExtractMKVSubtitle to %s failed.\n", fSub.getName());
+                    RKLog.Log("ExtractSubtitle to %s failed.\n", fSub.getName());
                     continue;
                 }
 
