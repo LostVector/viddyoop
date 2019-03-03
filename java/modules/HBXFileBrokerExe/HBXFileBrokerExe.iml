@@ -10,7 +10,6 @@
     <orderEntry type="module" module-name="RKUtils" />
     <orderEntry type="module" module-name="HBXUtils" />
     <orderEntry type="module" module-name="RKSSHUtils" />
-    <orderEntry type="library" name="jsch-0.1.51" level="project" />
+    <orderEntry type="library" name="jsch-0.1.55" level="project" />
   </component>
 </module>
-
