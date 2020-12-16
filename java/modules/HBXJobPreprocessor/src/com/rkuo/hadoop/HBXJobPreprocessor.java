@@ -828,6 +828,20 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
 
         MKVTrack    tPreferred;
 
+        tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_EAC3", language, 6 );
+        if( tPreferred != null ) {
+            RKLog.Log( "Found an English E-AC3 5.1 track. Will encode the original file." );
+            return tPreferred;
+        }
+        RKLog.Log( "Couldn't find an English E-AC3 5.1 track." );
+
+        tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_EAC3", language, 5 );
+        if( tPreferred != null ) {
+            RKLog.Log( "Found an English E-AC3 5.0 track. Will encode the original file." );
+            return tPreferred;
+        }
+        RKLog.Log( "Couldn't find an English E-AC3 5.0 track." );
+
         tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_AC3", language, 6 );
         if( tPreferred != null ) {
             RKLog.Log( "Found an English AC3 5.1 track. Will encode the original file." );
@@ -862,6 +876,20 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
             return tPreferred;
         }
         RKLog.Log( "Couldn't find an English DTS 7.1 track." );
+
+        tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_EAC3", "", 6 );
+        if( tPreferred != null ) {
+            RKLog.Log( "Found an unknown language E-AC3 5.1 track. Will encode the original file." );
+            return tPreferred;
+        }
+        RKLog.Log( "Couldn't find any E-AC3 5.1 track." );
+
+        tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_EAC3", "", 5 );
+        if( tPreferred != null ) {
+            RKLog.Log( "Found an unknown language E-AC3 5.0 track. Will encode the original file." );
+            return tPreferred;
+        }
+        RKLog.Log( "Couldn't find any E-AC3 5.0 track." );
 
         tPreferred = MKVTrack.FindMKVAudioTrack( mkvTracks, "A_AC3", "", 6 );
         if( tPreferred != null ) {
