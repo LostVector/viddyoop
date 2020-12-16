@@ -6,7 +6,6 @@
         <element id="file-copy" path="$PROJECT_DIR$/../../modules/HBXJobSubmitterExe/src/META-INF/MANIFEST.MF" />
       </element>
       <element id="module-output" name="HBXJobSubmitterExe" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/../../lib/mysql-connector-java/mysql-connector-java-5.1.12-bin.jar" path-in-jar="/" />
       <element id="module-output" name="HBXUtils" />
       <element id="module-output" name="RKUtils" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../../lib/jtidy-r938.jar" path-in-jar="/" />
