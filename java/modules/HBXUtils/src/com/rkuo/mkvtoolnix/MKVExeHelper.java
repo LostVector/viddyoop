@@ -57,6 +57,10 @@ public class MKVExeHelper {
         cmdArgs.add( targetFilename );
         cmdArgs.add( sourceFilename );
 
+        // some files have the same title all the time, which causes iTunes to overwrite the files continuously
+        cmdArgs.add( "--title" );
+        cmdArgs.add( FileUtils.getNameWithoutExtension(sourceFilename) );
+
         Misc.printArgs(cmdArgs.toArray(new String[cmdArgs.size()]));
         exitCode = Misc.ExecuteProcess( cmdArgs.toArray( new String[cmdArgs.size()]), null, false, null, null );
         if( exitCode != 0 ) {
