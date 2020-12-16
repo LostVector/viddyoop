@@ -420,7 +420,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         RKLog.Log( "Looking for a %s AC3 5.x track.", language );
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
             if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                if( at.Codec.compareToIgnoreCase("ac3") == 0 ) {
+                if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0 ) {
                     if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
                         RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
                         return at;
@@ -437,7 +437,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         // otherwise, look for the first 5.1 track
         RKLog.Log( "Looking for any AC3 5.x track." );
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Codec.compareToIgnoreCase("ac3") == 0 ) {
+            if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0 ) {
                 if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
                     RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
                     return at;
