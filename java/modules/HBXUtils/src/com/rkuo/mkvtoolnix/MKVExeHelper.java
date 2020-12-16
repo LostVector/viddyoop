@@ -604,7 +604,7 @@ public class MKVExeHelper {
 
                 RKLog.println(line);
 
-                if( line.startsWith("|+ Segment tracks") == true ) {
+                if( line.startsWith("|+ Tracks") == true ) {
                     bSegmentTracks = true;
                 }
                 else if( bSegmentTracks == true ) {
@@ -613,7 +613,7 @@ public class MKVExeHelper {
                     trackAttributePrefix = "|  + ";
                     trackAttributePrefix2 = "|   + ";
 
-                    if( line.startsWith("| + A track") == true ) {
+                    if( line.startsWith("| + Track") == true ) {
                         track = new MKVTrack();
                         tracks.add( track );
                         continue;

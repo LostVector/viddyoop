@@ -19,7 +19,9 @@ public class HBXExeHelperTest {
 
         MKVTrack[] tracks;
 
-        tracks = MKVExeHelper.ExecuteMKVInfo("/Applications/Mkvtoolnix.app/Contents/MacOS/mkvinfo", "/Users/root/Downloads/hbxtest/test.mkv");
+        tracks = MKVExeHelper.ExecuteMKVInfo(
+                "/Applications/MKVToolNix-45.0.0.app/Contents/MacOS/mkvinfo",
+                "/Users/root/Downloads/hbxtest/test.mkv");
         Assert.assertEquals( tracks.length, 9 );
         return;
     }
