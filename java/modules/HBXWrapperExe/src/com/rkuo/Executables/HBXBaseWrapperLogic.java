@@ -714,7 +714,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         // fix
         params.Quality = 20.0;
         if( bFullHD == true ) {
-            params.Quality = 23.0;
+            params.Quality = 21.0;
         }
 
         params.RateControl = HandBrakeExeParams.VideoFrameRateControlOption.PEAK_LIMITED;

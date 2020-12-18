@@ -518,7 +518,7 @@ public class HBXExeHelper {
             cmdArgs.add( "20" );
         }
         else {
-            cmdArgs.add( "23" );
+            cmdArgs.add( "21" );
         }
 
         cmdArgs.add( "--pfr" );
