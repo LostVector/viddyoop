@@ -231,6 +231,7 @@ public class HandBrakeExeParams {
         COPY_AAC("copy:aac"),
         FFAC3("ffac3"),
         COPY_AC3("copy:ac3"),
+        COPY_EAC3("copy:eac3"),
         COPY_DTS("copy:dts"),
         COPY_DTSHD("copy:dtshd"),
         LAME("lame"),

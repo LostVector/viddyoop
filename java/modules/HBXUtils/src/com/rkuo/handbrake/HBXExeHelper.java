@@ -577,6 +577,29 @@ public class HBXExeHelper {
         // ac3 surround tracks come next ... we try to passthru all ac3, but encode to ac3 otherwise
         // try to pass through ac3 (or encode to it if passthru is not possible)
         for( Integer x=0; x < audioTracks.length; x++ ) {
+            if( audioTracks[x].Codec.compareToIgnoreCase("eac3") == 0 ) {
+                // we don't need any ac3 that isn't surround
+                if( audioTracks[x].SurroundNotation.contains("1.0") == true ) {
+                    continue;
+                }
+
+                if( audioTracks[x].SurroundNotation.contains("2.0") == true ) {
+                    continue;
+                }
+
+                if( audioTracks[x].SurroundNotation.contains("Dolby Surround") == true ) {
+                    continue;
+                }
+
+                argTrackNumbers += audioTracks[x].TrackNumber.toString() + ",";
+                argAEncoder += "copy:eac3,";
+                argMixdown += "auto,";
+                argARate += "auto,";
+                argABitrate += "auto,";
+                argDRC += "0.0,";
+                continue;
+            }
+
             if( audioTracks[x].Codec.compareToIgnoreCase("ac3") == 0 ) {
                 // we don't need any ac3 that isn't surround
                 if( audioTracks[x].SurroundNotation.contains("1.0") == true ) {

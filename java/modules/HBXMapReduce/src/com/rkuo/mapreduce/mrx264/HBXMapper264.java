@@ -139,7 +139,7 @@ public class HBXMapper264 extends Mapper<LongWritable,Text,LongWritable,Text> {
         RKLog.Log( "Looking for a %s AC3 5.x track.", language );
         for( MKVTrack t : tracks ) {
             if( t.Language.compareToIgnoreCase(language) == 0 ) {
-                if( t.CodecID.compareToIgnoreCase("A_AC3") == 0 ) {
+                if( t.CodecID.compareToIgnoreCase("A_AC3") == 0 || t.CodecID.compareToIgnoreCase("A_EAC3") == 0 ) {
                     if( (t.Channels == 5) || (t.Channels == 6) ) {
                         RKLog.Log( "Using audio track %d. (%s, %s, %d).", t.TrackId, t.Language, t.CodecID, t.Channels );
                         return t.TrackId;
@@ -151,7 +151,7 @@ public class HBXMapper264 extends Mapper<LongWritable,Text,LongWritable,Text> {
         // otherwise, look for the first 5.1 track
         RKLog.Log( "Looking for any AC3 5.x track." );
         for( MKVTrack t : tracks ) {
-            if( t.CodecID.compareToIgnoreCase("A_AC3") == 0 ) {
+            if( t.CodecID.compareToIgnoreCase("A_AC3") == 0 || t.CodecID.compareToIgnoreCase("A_EAC3") == 0 ) {
                 if( (t.Channels == 5) || (t.Channels == 6) ) {
                     RKLog.Log( "Using audio track %d. (%s, %s, %s).", t.TrackId, t.Language, t.CodecID, t.Channels );
                     return t.TrackId;

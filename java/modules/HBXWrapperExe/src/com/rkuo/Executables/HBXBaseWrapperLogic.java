@@ -470,7 +470,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         // look for the first ac3 5.1 track in the specified language
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
             if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                if( at.Codec.compareToIgnoreCase("ac3") == 0 ) {
+                if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0  ) {
                     if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
                         RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
                         return at;
@@ -757,6 +757,16 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             }
 
             if( audioTracks[x].SurroundNotation.contains("Dolby Surround") == true ) {
+                continue;
+            }
+
+            if( audioTracks[x].Codec.compareToIgnoreCase("eac3") == 0 ) {
+                params.AudioTracks.add(audioTracks[x].TrackNumber);
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.COPY_EAC3);
+                params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.AUTO);
+                params.AudioSampleRates.add(0);
+                params.AudioBitrates.add(0);
+                params.AudioDynamicRangeCompressions.add(0.0);
                 continue;
             }
 
