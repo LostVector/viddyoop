@@ -538,14 +538,14 @@ public class MKVExeHelper {
         InputStream         is;
         InputStreamReader   isr;
         BufferedReader      bufr;
-        ArrayList<String>   cmdArgs;
-        boolean             bSegmentTracks;
-        int                 exitCode;
-        ArrayList<MKVTrack> tracks;
+        StringWriter writer;
 
-        bSegmentTracks = false;
+        ArrayList<String>   cmdArgs;
+        int                 exitCode;
+//        ArrayList<MKVTrack> tracks;
+
         exitCode = Integer.MIN_VALUE;
-        tracks = new ArrayList<MKVTrack>();
+//        tracks = new ArrayList<MKVTrack>();
 
         cmdArgs = new ArrayList<String>();
         cmdArgs.add( mkvinfoPath );
@@ -568,6 +568,8 @@ public class MKVExeHelper {
         isr = new InputStreamReader(is);
         bufr = new BufferedReader(isr);
 
+        MKVInfoState state = new MKVInfoState();
+        writer = new StringWriter();
         while (true) {
 
             int tempExitCode;
@@ -580,16 +582,9 @@ public class MKVExeHelper {
                 // process has not exited yet ... this is ok
             }
 
-            MKVTrack    track;
-
-            track = null;
-
             // We put this here so that any buffered data can be spooled out
             // after reading the exit code but prior to exiting
             while( true ) {
-
-                String[]  parts;
-
                 try {
                     line = bufr.readLine();
                 }
@@ -603,118 +598,8 @@ public class MKVExeHelper {
 
                 RKLog.println(line);
 
-                if( line.startsWith("|+ Tracks") == true ) {
-                    bSegmentTracks = true;
-                }
-                else if( bSegmentTracks == true ) {
-                    String  trackAttributePrefix, trackAttributePrefix2;
-
-                    trackAttributePrefix = "|  + ";
-                    trackAttributePrefix2 = "|   + ";
-
-                    if( line.startsWith("| + Track") == true ) {
-                        track = new MKVTrack();
-                        tracks.add( track );
-                        continue;
-                    }
-
-                    if( track == null ) {
-                        continue;
-                    }
-
-                    if( line.startsWith(trackAttributePrefix) == true ) {
-                        String tempLine, name, value;
-                        int     nColonIndex;
-
-                        tempLine = line.substring(trackAttributePrefix.length());
-
-                        nColonIndex = tempLine.indexOf(':');
-                        if( nColonIndex == -1 ) {
-                            continue;
-                        }
-
-                        name = tempLine.substring(0, nColonIndex);
-                        value = tempLine.substring(nColonIndex+1, tempLine.length());
-                        value = value.trim();
-
-                        if( name.compareToIgnoreCase("track number") == 0 ) {
-                            String tempValue;
-
-                            int idxSpace = value.indexOf(' ');
-                            if( idxSpace != -1 ) {
-                                tempValue = value.substring(0,idxSpace);
-                            }
-                            else {
-                                tempValue = value;
-                            }
-
-                            track.TrackNumber = Integer.parseInt(tempValue);
-
-                            nColonIndex = value.indexOf(':');
-                            if( nColonIndex >= 0 ) {
-                                int nParenIndex = value.indexOf(')');
-                                tempValue = value.substring(nColonIndex+1,nParenIndex);
-                                tempValue = tempValue.trim();
-                                track.TrackId = Integer.parseInt(tempValue);
-                            }
-                        }
-                        else if( name.compareToIgnoreCase("track type") == 0 ) {
-                            track.Type = value;
-                        }
-                        else if( name.compareToIgnoreCase("codec id") == 0 ) {
-                            track.CodecID = value;
-                        }
-                        else if( name.compareToIgnoreCase("language") == 0 ) {
-                            track.Language = value;
-                        }
-                        else if( name.compareToIgnoreCase("default flag") == 0 ) {
-                            if( Integer.parseInt(value) == 0 ) {
-                                track.Default = false;
-                            }
-                            else {
-                                track.Default = true;
-                            }
-                        }
-                        else if( name.compareToIgnoreCase("forced flag") == 0 ) {
-                            if( Integer.parseInt(value) == 0 ) {
-                                track.Forced = false;
-                            }
-                            else {
-                                track.Forced = true;
-                            }
-                        }
-                        else if( name.compareToIgnoreCase("name") == 0 ) {
-                            track.Name = value;
-                        }
-
-                    }
-                    else if( line.startsWith(trackAttributePrefix2) == true ) {
-                        String tempLine, name, value;
-                        int     nColonIndex;
-
-                        tempLine = line.substring(trackAttributePrefix2.length());
-
-                        nColonIndex = tempLine.indexOf(':');
-                        if( nColonIndex == -1 ) {
-                            continue;
-                        }
-
-                        name = tempLine.substring(0, nColonIndex);
-                        value = tempLine.substring(nColonIndex+1, tempLine.length());
-                        value = value.trim();
-
-                        if( name.compareToIgnoreCase("channels") == 0 ) {
-                            track.Channels = Integer.parseInt(value);
-                        }
-                    }
-                    else if( line.indexOf('+') == 1 ) {
-                        bSegmentTracks = false;
-                        track = null;
-                    }
-                    else {
-                        // unexpected?
-                    }
-                }
+                ScanMKVInfoLine(line, state);
+                writer.write(line + "\n");
             }
 
             if( tempExitCode != Integer.MIN_VALUE ) {
@@ -728,6 +613,149 @@ public class MKVExeHelper {
             return null;
         }
 
-        return tracks.toArray( new MKVTrack[tracks.size()] );
+        MKVInfoState mp4ss = ParseMKVInfo(writer.toString());
+        return state.tracks.toArray( new MKVTrack[state.tracks.size()] );
+    }
+
+    public static MKVInfoState ParseMKVInfo(String text) {
+        MKVInfoState state = new MKVInfoState();
+
+        BufferedReader bufr = new BufferedReader(new StringReader(text));
+        while (true) {
+            String line;
+
+            try {
+                line = bufr.readLine();
+            }
+            catch (IOException ioex) {
+                break;
+            }
+
+            if(line == null) {
+                break;
+            }
+
+            ScanMKVInfoLine(line, state);
+        }
+
+        return state;
+    }
+
+    public static void ScanMKVInfoLine( String line, MKVInfoState state ) {
+
+        if( line.startsWith("|+ Segment tracks") == true ) {
+            state.bSegmentTracks = true;
+        }
+        else if( state.bSegmentTracks == true ) {
+            String  trackAttributePrefix, trackAttributePrefix2;
+
+            trackAttributePrefix = "|  + ";
+            trackAttributePrefix2 = "|   + ";
+
+            if( line.startsWith("| + A track") == true ) {
+                state.currentTrack = new MKVTrack();
+                state.tracks.add( state.currentTrack );
+                return;
+            }
+
+            if( state.currentTrack == null ) {
+                return;
+            }
+
+            if( line.startsWith(trackAttributePrefix) == true ) {
+                String tempLine, name, value;
+                int     nColonIndex;
+
+                tempLine = line.substring(trackAttributePrefix.length());
+
+                nColonIndex = tempLine.indexOf(':');
+                if( nColonIndex == -1 ) {
+                    return;
+                }
+
+                name = tempLine.substring(0, nColonIndex);
+                value = tempLine.substring(nColonIndex+1, tempLine.length());
+                value = value.trim();
+
+                if( name.compareToIgnoreCase("track number") == 0 ) {
+                    String tempValue;
+
+                    int idxSpace = value.indexOf(' ');
+                    if( idxSpace != -1 ) {
+                        tempValue = value.substring(0,idxSpace);
+                    }
+                    else {
+                        tempValue = value;
+                    }
+
+                    state.currentTrack.TrackNumber = Integer.parseInt(tempValue);
+
+                    nColonIndex = value.indexOf(':');
+                    if( nColonIndex >= 0 ) {
+                        int nParenIndex = value.indexOf(')');
+                        tempValue = value.substring(nColonIndex+1,nParenIndex);
+                        tempValue = tempValue.trim();
+                        state.currentTrack.TrackId = Integer.parseInt(tempValue);
+                    }
+                }
+                else if( name.compareToIgnoreCase("track type") == 0 ) {
+                    state.currentTrack.Type = value;
+                }
+                else if( name.compareToIgnoreCase("codec id") == 0 ) {
+                    state.currentTrack.CodecID = value;
+                }
+                else if( name.compareToIgnoreCase("language") == 0 ) {
+                    state.currentTrack.Language = value;
+                }
+                else if( name.compareToIgnoreCase("default flag") == 0 ) {
+                    if( Integer.parseInt(value) == 0 ) {
+                        state.currentTrack.Default = false;
+                    }
+                    else {
+                        state.currentTrack.Default = true;
+                    }
+                }
+                else if( name.compareToIgnoreCase("forced flag") == 0 ) {
+                    if( Integer.parseInt(value) == 0 ) {
+                        state.currentTrack.Forced = false;
+                    }
+                    else {
+                        state.currentTrack.Forced = true;
+                    }
+                }
+                else if( name.compareToIgnoreCase("name") == 0 ) {
+                    state.currentTrack.Name = value;
+                }
+
+            }
+            else if( line.startsWith(trackAttributePrefix2) == true ) {
+                String tempLine, name, value;
+                int     nColonIndex;
+
+                tempLine = line.substring(trackAttributePrefix2.length());
+
+                nColonIndex = tempLine.indexOf(':');
+                if( nColonIndex == -1 ) {
+                    return;
+                }
+
+                name = tempLine.substring(0, nColonIndex);
+                value = tempLine.substring(nColonIndex+1, tempLine.length());
+                value = value.trim();
+
+                if( name.compareToIgnoreCase("channels") == 0 ) {
+                    state.currentTrack.Channels = Integer.parseInt(value);
+                }
+            }
+            else if( line.indexOf('+') == 1 ) {
+                state.bSegmentTracks = false;
+                state.currentTrack = null;
+            }
+            else {
+                // unexpected?
+            }
+        }
+
+        return;
     }
 }

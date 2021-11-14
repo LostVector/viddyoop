@@ -2,6 +2,7 @@ package com.rkuo.handbrake;
 
 import com.rkuo.ffmpeg.FFMpegExeHelper;
 import com.rkuo.mkvtoolnix.MKVExeHelper;
+import com.rkuo.mkvtoolnix.MKVInfoState;
 import com.rkuo.mkvtoolnix.MKVTrack;
 import com.rkuo.mp4box.MP4BoxHelper;
 import org.junit.Assert;
@@ -23,6 +24,17 @@ public class HBXExeHelperTest {
                 "/Applications/MKVToolNix-45.0.0.app/Contents/MacOS/mkvinfo",
                 "/Users/root/Downloads/hbxtest/test.mkv");
         Assert.assertEquals( tracks.length, 9 );
+        return;
+    }
+
+    @Test
+    public void testParseMKVInfo() {
+
+        String scan = File.ToString("res/mkvinfo.txt");
+        MKVInfoState state = MKVExeHelper.ParseMKVInfo(scan);
+
+        Assert.assertTrue(state != null);
+        Assert.assertEquals(5, state.tracks.size());
         return;
     }
 
