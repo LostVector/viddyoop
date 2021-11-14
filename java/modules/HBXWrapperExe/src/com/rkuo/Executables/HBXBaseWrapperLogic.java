@@ -762,7 +762,10 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
             if( audioTracks[x].Codec.compareToIgnoreCase("eac3") == 0 ) {
                 params.AudioTracks.add(audioTracks[x].TrackNumber);
-                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.COPY_EAC3);
+
+                // our old encoder doesn't support copy:eac3 and I don't have time to fix it
+                params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.COPY_AC3);
+
                 params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.AUTO);
                 params.AudioSampleRates.add(0);
                 params.AudioBitrates.add(0);

@@ -592,7 +592,9 @@ public class HBXExeHelper {
                 }
 
                 argTrackNumbers += audioTracks[x].TrackNumber.toString() + ",";
-                argAEncoder += "copy:eac3,";
+
+                // our old encoder doesn't support copy:eac3 and I don't have time to fix it
+                argAEncoder += "copy:ac3,";
                 argMixdown += "auto,";
                 argARate += "auto,";
                 argABitrate += "auto,";
