@@ -500,7 +500,6 @@ public class MKVExeHelper {
         }
         RKLog.Log("Remuxing to final AC3 MKV completed.");
 
-
         leftoverFiles = FileUtils.GetFiles(fWorkingDir);
         for (String leftoverFile : leftoverFiles) {
             File fLeftover;

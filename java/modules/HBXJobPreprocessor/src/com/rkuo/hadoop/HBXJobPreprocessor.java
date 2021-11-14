@@ -988,7 +988,7 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
                 fAften.getAbsolutePath(), fDcaDec.getAbsolutePath(),
                 fWorkingDir.getAbsolutePath(), tPreferred);
         if( exitCode == Integer.MIN_VALUE ) {
-            // thsi value means the conversion progress hung
+            // this value means the conversion progress hung
             ar.returnCode = AC3ConversionResult.AC3CONVERSION_HUNG;
             return ar;
         }

@@ -679,7 +679,7 @@ public class HBXExeHelper {
             argSrtDefault = "";
 
             for( int x=0; x < subtitleTracks.length; x++ ) {
-                 HBXSubtitleTrack st = subtitleTracks[x];
+                HBXSubtitleTrack st = subtitleTracks[x];
 
                 argSrtFiles += st.Filename + ",";
                 argSrtCodeset += "UTF-8,";
