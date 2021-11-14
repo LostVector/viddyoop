@@ -11,19 +11,21 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 
 public class MP4BoxHelper {
 
     public static List<MKVTrack> ExecuteMP4BoxScan( String mp4boxPath, String sourceFilename, boolean bEcho ) {
 
-        Process             process;
-        String              line;
+        Process process;
+        String line;
         InputStream is;
         InputStreamReader isr;
         BufferedReader bufr;
+        StringWriter writer;
 
-        MP4ScanState mp4ss = new MP4ScanState();
+//        MP4ScanState mp4ss = new MP4ScanState();
 
         ArrayList<String> cmdArgs = new ArrayList<String>();
         cmdArgs.add( mp4boxPath );
@@ -48,6 +50,7 @@ public class MP4BoxHelper {
         isr = new InputStreamReader(is);
         bufr = new BufferedReader(isr);
 
+        writer = new StringWriter();
         while (true) {
             int exitCode;
 
@@ -62,7 +65,6 @@ public class MP4BoxHelper {
             // We put this here so that any buffered data can be spooled out
             // after reading the exit code but prior to exiting
             while( true ) {
-
                 try {
                     line = bufr.readLine();
                 }
@@ -78,7 +80,8 @@ public class MP4BoxHelper {
                     RKLog.println(line);
                 }
 
-                ScanMP4BoxOutput(line, mp4ss);
+//                ScanMP4BoxOutput(line, mp4ss);
+                writer.write(line + "\n");
             }
 
             if( exitCode != Integer.MIN_VALUE ) {
@@ -87,7 +90,32 @@ public class MP4BoxHelper {
             }
         }
 
+        MP4ScanState mp4ss = ParseMP4BoxScan(writer.toString());
         return mp4ss.tracks;
+    }
+
+    public static MP4ScanState ParseMP4BoxScan(String text) {
+        MP4ScanState mp4ss = new MP4ScanState();
+
+        BufferedReader bufr = new BufferedReader(new StringReader(text));
+        while (true) {
+            String line;
+
+            try {
+                line = bufr.readLine();
+            }
+            catch (IOException ioex) {
+                break;
+            }
+
+            if(line == null) {
+                break;
+            }
+
+            ScanMP4BoxOutput(line, mp4ss);
+        }
+
+        return mp4ss;
     }
 
     public static List<MKVTrack> ExecuteMP4BoxInfoFromFile( String sourceFilename ) {
