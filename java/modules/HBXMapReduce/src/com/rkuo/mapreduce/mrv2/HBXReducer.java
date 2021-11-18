@@ -31,6 +31,9 @@ public class HBXReducer extends Reducer<LongWritable,Text,LongWritable,Text> {
     protected String MKVExtract;
     protected String SSAConverter;
 
+    protected String PrimaryLanguage;
+    protected String SecondaryLanguage;
+
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         Configuration c = context.getConfiguration();
@@ -52,6 +55,9 @@ public class HBXReducer extends Reducer<LongWritable,Text,LongWritable,Text> {
         MKVInfo = c.get("mkvinfo");
         MKVExtract = c.get("mkvextract");
         SSAConverter = c.get("ssaconverter");
+
+        PrimaryLanguage = c.get("primary_language");
+        SecondaryLanguage = c.get("secondary_language");
         return;
     }
 
@@ -102,6 +108,9 @@ public class HBXReducer extends Reducer<LongWritable,Text,LongWritable,Text> {
         hbxwp.MKVInfo = MKVInfo;
         hbxwp.MKVExtract = MKVExtract;
         hbxwp.SSAConverter = SSAConverter;
+
+        hbxwp.PrimaryLanguage = PrimaryLanguage;
+        hbxwp.SecondaryLanguage = SecondaryLanguage;
 
         hbxwp.TempDirectory = d.getCanonicalPath();
 //            hbxwp.TempDirectory = "";

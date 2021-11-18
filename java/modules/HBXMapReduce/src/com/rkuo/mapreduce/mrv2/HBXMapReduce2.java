@@ -204,6 +204,9 @@ public class HBXMapReduce2 extends HBXMapReduceBase {
         c.set("mkvextract", hbxwp.MKVExtract);
         c.set("ssaconverter", hbxwp.SSAConverter);
 
+        c.set("primary_language", hbxwp.PrimaryLanguage);
+        c.set("secondary_language", hbxwp.SecondaryLanguage);
+
         c.set("mapred.job.priority", JobPriority.NORMAL.toString()); // TODO: dynamically configure this
 
 //        c.unset("fs.default.name"); // tried to remove warning from hadoop about fs.default.name being deprecated, but job submission barfs.  Go hadoop.
