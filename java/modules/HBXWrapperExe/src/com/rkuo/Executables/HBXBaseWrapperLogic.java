@@ -450,7 +450,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             }
         }
 
-        // otherwise, just look any english track
+        // otherwise, just look for any english track
         RKLog.Log( "Looking for any %s track.", language );
         for( HBXAudioTrack at : hbxsp.AudioTracks ) {
             if( at.Language.compareToIgnoreCase(language) == 0 ) {
@@ -714,7 +714,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         // fix
         params.Quality = 20.0;
         if( bFullHD == true ) {
-            params.Quality = 21.0;
+            params.Quality = 22.0;
         }
 
         params.RateControl = HandBrakeExeParams.VideoFrameRateControlOption.PEAK_LIMITED;
@@ -765,7 +765,6 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
                 // our old encoder doesn't support copy:eac3 and I don't have time to fix it
                 params.AudioEncoders.add(HandBrakeExeParams.AudioEncoderOption.COPY_AC3);
-
                 params.AudioMixdowns.add(HandBrakeExeParams.AudioMixdownOption.AUTO);
                 params.AudioSampleRates.add(0);
                 params.AudioBitrates.add(0);
