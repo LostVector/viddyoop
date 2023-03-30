@@ -416,7 +416,7 @@ public class HBXSSHFileBrokerExe {
         if( hbxip.FinalTarget.length() > 0 ) {
             RKLog.Log("Move succeeded: %s", f.getName());
         } else {
-            RKLog.Log("Move succeeded: %s", f.getName());
+            RKLog.Log("Move failed: %s", f.getName());
         }
 
         return;
