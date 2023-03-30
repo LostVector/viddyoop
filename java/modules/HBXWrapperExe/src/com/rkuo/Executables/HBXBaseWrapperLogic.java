@@ -505,7 +505,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         aSubtitleTracks = new ArrayList<HBXSubtitleTrack>();
 
         for (MKVTrack t : tracks) {
-            if( t.Type.compareToIgnoreCase("subtitles") == 0 ) {
+            if (t.Type.compareToIgnoreCase("subtitles") == 0) {
                 String subBase, subExt;
                 String mappedLanguageCode;
                 File fMKV, fSub, fFinalSub;
