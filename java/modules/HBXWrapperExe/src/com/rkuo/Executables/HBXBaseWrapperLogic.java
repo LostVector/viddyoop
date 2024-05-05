@@ -795,7 +795,13 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
         // subtitles
         if( subtitleTracks.length > 0 ) {
+            int totalAudioVideoTracks = params.AudioTracks.size() + 1;
             for( int x=0; x < subtitleTracks.length; x++ ) {
+                // our version of handbrake doesn't handle more than 32 tracks
+                if( totalAudioVideoTracks + x + 1 > 31 ) {
+                    break;
+                }
+
                 HBXSubtitleTrack st = subtitleTracks[x];
 
                 params.SrtFiles.add(st.Filename);

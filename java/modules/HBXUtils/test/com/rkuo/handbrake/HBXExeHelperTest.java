@@ -30,7 +30,7 @@ public class HBXExeHelperTest {
     @Test
     public void testParseMKVInfo() {
 
-        String scan = File.ToString("res/mkvinfo.txt");
+        String scan = com.rkuo.io.File.ToString("res/mkvinfo.txt");
         MKVInfoState state = MKVExeHelper.ParseMKVInfo(scan);
 
         Assert.assertTrue(state != null);
