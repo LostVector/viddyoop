@@ -30,14 +30,20 @@ THE SOFTWARE.
 ======
 
 Developer/Build requirements
-- IntelliJ 11.0 or later (Free Community Edition is OK) - http://www.jetbrains.com/idea/download/
-- Java 6
+- JDK 8 or later (tested with JDK 17/27)
+- Maven 3.9 or later
 
 To build:
 
-- Click on File/Open project in IntelliJ, then open the projects/viddyoop folder.
-- Click on Build/Rebuild project.
-- Visit the projects/viddyoop/out/bundle folder to get at the bundled output.
+- Run `mvn package` from the repository root.
+- The runnable fat jars are written to each module's `target/` directory:
+  - `java/modules/HBXFileBrokerExe/target/HBXFileBroker.jar`
+  - `java/modules/HBXFileCollectorExe/target/HBXFileCollector.jar`
+  - `java/modules/HBXJobPreprocessor/target/HBXJobPreprocessor.jar`
+  - `java/modules/HBXMapReduce/target/HBXMapReduce.jar`
+  - `java/modules/HBXJobSubmitterExe/target/HBXJobSubmitter.jar`
+- Sample launch scripts and configuration files live under
+  `java/modules/HBXJobSubmitterExe/resources/`.
 
 
 The iTunes preprocessor plugin relies on the following binaries
