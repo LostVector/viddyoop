@@ -1,10 +1,10 @@
 <mapreduce>
-  <username>rkuo</username>
+  <username>hadoopuser</username>
   <password>secure_password_here</password>
-  <hostname>rkuo-vm.mv.rkuo.com</hostname>
-  <resources_username>rkuo</resources_username>
+  <hostname>hadoop-master.example.com</hostname>
+  <resources_username>hadoopuser</resources_username>
   <resources_password>secure_password_here</resources_password>
-  <resources_hostname>rkuo-vm.mv.rkuo.com</resources_hostname>
+  <resources_hostname>hadoop-master.example.com</resources_hostname>
   <resources_location>/home/root/cloudera/hadoop_resources</resources_location>
   <handbrake>HandBrakeCLI-x64-0.9.8-ubuntu</handbrake>
   <mkvinfo>mkvinfo-5.7.0-ubuntu</mkvinfo>

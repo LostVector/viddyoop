@@ -16,7 +16,7 @@ import com.rkuo.util.*;
 
 // Watches a input directory
 // Moves the files to a processing directory
-// Submits an xgrid job for each file
+// Submits a Hadoop MapReduce job for each file
 public class HBXJobSubmitterExe {
 
 //    private static long     RESULTS_SCAN_DELAY_MS = 60 * 60 * 1000;  // 60 min (in ms)
@@ -324,40 +324,6 @@ public class HBXJobSubmitterExe {
 
         return mr;
     }
-
-/*
-    private static void RetryBenignJobFailures( HBXJobSubmitterParams hbxjsp ) {
-
-        Long[] xgJobs;
-
-        xgJobs = XgridHelper.XgridGetJobs();
-        if( xgJobs == null ) {
-            return;
-        }
-
-        for (Long jobId : xgJobs) {
-            XgridJobAttributes xga;
-
-            xga = XgridHelper.XgridGetJobAttributes(jobId);
-            if( xga == null ) {
-                continue;
-            }
-            
-            if (xga.jobStatus.compareToIgnoreCase("Failed") == 0) {
-                String results;
-
-                results = XgridHelper.XgridGetJobResults(jobId);
-                if (results.contains("Unable to access jarfile") == true) {
-                    RKLog.Log("%d: Resubmitting %s because original job failed with unable to access jarfile error.", jobId, xga.name);
-                    XgridHelper.XgridDeleteJob(jobId);
-                    XgridHelper.SubmitXgridJob(FileUtils.PathCombine(hbxjsp.SourceIntermediate, xga.name) + ".xgrid.xml");
-                }
-            }
-        }
-
-        return;
-    }
-*/
 
     private static HBXJobSubmitterParams GetHBXJobSubmitterParams(CommandLineParser clp) {
 

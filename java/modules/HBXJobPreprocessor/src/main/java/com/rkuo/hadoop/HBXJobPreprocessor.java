@@ -142,8 +142,6 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
         aNewFilenames = new ArrayList<String>();
         aReprocessFilenames = new ArrayList<String>();
 
-//      jobSubmitter = new XgridJobSubmitter();
-//        jobSubmitter = new HadoopJobSubmitter(mr);
 
         for( String supportedFiletype : GetSupportedFileTypes() ) {
             String[]  newFilenames;
@@ -497,8 +495,6 @@ public class HBXJobPreprocessor extends HBXJobPreprocessorBase {
         aNewFilenames = new ArrayList<String>();
         aReprocessFilenames = new ArrayList<String>();
 
-//      jobSubmitter = new XgridJobSubmitter();
-//        jobSubmitter = new HadoopJobSubmitter(mr);
 
         for( String supportedFiletype : HBXConstants.SupportedFiletypes ) {
             String[]  newFilenames;
