@@ -14,7 +14,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.release>8</maven.compiler.release>
+    <maven.compiler.release>17</maven.compiler.release>
 
     <cdh.version>2.0.0-cdh4.5.0</cdh.version>
     <cdh.mr1.version>2.0.0-mr1-cdh4.5.0</cdh.mr1.version>

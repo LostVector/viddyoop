@@ -30,7 +30,7 @@ THE SOFTWARE.
 ======
 
 Developer/Build requirements
-- JDK 8 or later (tested with JDK 17/27)
+- JDK 17 or later
 - Maven 3.9 or later
 
 To build:
