@@ -53,12 +53,6 @@ public class TestHadoopJobSubmitter extends TestCase {
     }
 
     @Test
-    public void testIsTaskTrackerRunning() {
-        ClusterManager.IsTaskTrackerRunning("jobtracker.domain.com");
-        return;
-    }
-
-    @Test
     public void testGetTrackers() {
         ClusterManager.GetTrackers("/Users/root/Downloads/hbxtest/trackers.xml");
         return;

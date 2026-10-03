@@ -43,7 +43,7 @@ public class X264OutputFormat<K,V> extends TextOutputFormat<K,V> {
                 public void abortJob(JobContext context, JobStatus.State state) throws IOException {
                     super.abortJob(context, state);    //To change body of overridden methods use File | Settings | File Templates.
                     System.out.format("X264OutputFormat.abortJob\n");
-                    Path output = getOutputPath(context);
+                    Path output = getOutputPath();
                     System.out.format("output path = %s\n",output.toString());
                     System.out.format("user = %s\n",context.getUser());
 
@@ -61,7 +61,7 @@ public class X264OutputFormat<K,V> extends TextOutputFormat<K,V> {
                 public void commitJob(JobContext context) throws IOException {
                     super.commitJob(context);    //To change body of overridden methods use File | Settings | File Templates.
                     System.out.format("X264OutputFormat.commitJob\n");
-                    Path output = getOutputPath(context);
+                    Path output = getOutputPath();
                     System.out.format("output path = %s\n",output.toString());
                     System.out.format("user = %s\n",context.getUser());
 
