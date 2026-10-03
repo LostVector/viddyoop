@@ -16,22 +16,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>17</maven.compiler.release>
 
-    <cdh.version>2.0.0-cdh4.5.0</cdh.version>
-    <cdh.mr1.version>2.0.0-mr1-cdh4.5.0</cdh.mr1.version>
-    <zookeeper.cdh.version>3.4.5-cdh4.5.0</zookeeper.cdh.version>
-    <jackson.version>2.3.1</jackson.version>
+    <hadoop.version>3.4.3</hadoop.version>
+    <jackson.version>2.15.4</jackson.version>
   </properties>
-
-  <repositories>
-    <!-- CDH artifacts are not published to Maven Central -->
-    <repository>
-      <id>cloudera-repos</id>
-      <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
 
   <dependencyManagement>
     <dependencies>
@@ -74,11 +61,6 @@
         <version>0.1.55</version>
       </dependency>
       <dependency>
-        <groupId>org.jsoup</groupId>
-        <artifactId>jsoup</artifactId>
-        <version>1.7.2</version>
-      </dependency>
-      <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-core</artifactId>
         <version>${jackson.version}</version>
@@ -98,79 +80,11 @@
         <artifactId>jackson-dataformat-xml</artifactId>
         <version>${jackson.version}</version>
       </dependency>
-      <dependency>
-        <groupId>org.codehaus.woodstox</groupId>
-        <artifactId>woodstox-core-asl</artifactId>
-        <version>4.2.0</version>
-      </dependency>
-      <dependency>
-        <groupId>org.codehaus.woodstox</groupId>
-        <artifactId>stax2-api</artifactId>
-        <version>3.1.1</version>
-      </dependency>
-
-      <!-- CDH Hadoop client (provided by the cluster at runtime) -->
+      <!-- Hadoop client (provided by the cluster at runtime) -->
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-client</artifactId>
-        <version>${cdh.mr1.version}</version>
-        <exclusions>
-          <!-- hadoop-annotations declares a system-scoped jdk.tools:1.6 (tools.jar)
-               on non-Mac OSes; tools.jar no longer exists on JDK 9+. -->
-          <exclusion>
-            <groupId>jdk.tools</groupId>
-            <artifactId>jdk.tools</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-common</artifactId>
-        <version>${cdh.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>jdk.tools</groupId>
-            <artifactId>jdk.tools</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-hdfs</artifactId>
-        <version>${cdh.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>jdk.tools</groupId>
-            <artifactId>jdk.tools</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-annotations</artifactId>
-        <version>${cdh.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>jdk.tools</groupId>
-            <artifactId>jdk.tools</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-core</artifactId>
-        <version>${cdh.mr1.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>jdk.tools</groupId>
-            <artifactId>jdk.tools</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.zookeeper</groupId>
-        <artifactId>zookeeper</artifactId>
-        <version>${zookeeper.cdh.version}</version>
+        <version>${hadoop.version}</version>
       </dependency>
 
       <!-- test -->

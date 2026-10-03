@@ -5,20 +5,14 @@ import com.rkuo.logging.RKLog;
 import com.rkuo.net.ssh.Scp;
 import com.rkuo.util.Misc;
 import com.rkuo.util.OperatingSystem;
-import com.rkuo.web.WebServices;
-import com.rkuo.xml.XMLHelper;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.ClusterStatus;
-import org.apache.hadoop.mapred.JobClient;
-import org.apache.hadoop.mapred.JobStatus;
-import org.apache.hadoop.mapred.RunningJob;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.NodeState;
+import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.YarnClient;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.*;
 
 /**
@@ -26,45 +20,46 @@ import java.util.*;
  * User: rkuo
  * Date: 2/4/14
  * Time: 11:51 PM
- * To change this template use File | Settings | File Templates.
  */
 public class ClusterManager {
 
     /*
-        Given a job tracker and list of task trackers, attempt to size the cluster to an appropriate size.
+        Given a ResourceManager and list of node managers, attempt to size the cluster to an appropriate size.
      */
-    public static void SizeCluster(String jobHostname, Integer jobPort, ClusterSizingStrategy css, String wakeExe, Map<String, RkTracker> trackers) {
+    public static void SizeCluster(String rmHostname, Integer rmPort, ClusterSizingStrategy css, String wakeExe, Map<String, RkTracker> trackers) {
 
-        JobClient jcl;
-        JobStatus[] jobs;
-        ClusterStatus cs;
         int activeNodeCount, activatingNodeCount = 0;
+        int jobCount = 0;
 
         Configuration c = new Configuration();
+        c.set("yarn.resourcemanager.address", rmHostname + ":" + rmPort.toString());
+
         Long now = System.currentTimeMillis();
 
+        YarnClient yarnClient = YarnClient.createYarnClient();
+        yarnClient.init(c);
+        yarnClient.start();
+
         try {
-            Collection<String> activeTrackers;
-            List<String> hostnames = new ArrayList<String>(); // all tasktrackers returned by the jobtracker
+            Set<String> busyHostnames = new HashSet<String>();
+            List<String> hostnames = new ArrayList<String>(); // all running nodes returned by the ResourceManager
 
-            jcl = new JobClient(new InetSocketAddress(jobHostname, jobPort), c);
+            // count all non-terminal applications (queued + running) as the outstanding job queue
+            EnumSet<YarnApplicationState> outstandingStates = EnumSet.of(
+                    YarnApplicationState.NEW,
+                    YarnApplicationState.NEW_SAVING,
+                    YarnApplicationState.SUBMITTED,
+                    YarnApplicationState.ACCEPTED,
+                    YarnApplicationState.RUNNING);
+            jobCount = yarnClient.getApplications(outstandingStates).size();
 
-//            jt = new JobTracker();
-//            Collection<TaskTrackerStatus> activeTrackers;
-//
-//            activeTrackers = jt.activeTaskTrackers();
+            // collect the running nodes and note which ones currently have containers allocated
+            for (NodeReport nr : yarnClient.getNodeReports(NodeState.RUNNING)) {
+                String hostname = nr.getNodeId().getHost();
 
-            jcl.setConf(c); // CDH has a bug where the conf in the constructor is not properly stored!
-            jobs = jcl.jobsToComplete();
-            cs = jcl.getClusterStatus(true);
-            activeTrackers = cs.getActiveTrackerNames();
-
-            // parse the hostnames out of the hadoop tracker list
-            // and update our own list of trackers with the ones active in Hadoop
-            for( String activeTracker : activeTrackers ) {
-                int first = activeTracker.indexOf("_");
-                int last = activeTracker.indexOf(":");
-                String hostname = activeTracker.substring(first + 1, last);
+                if( nr.getNumContainers() > 0 ) {
+                    busyHostnames.add(hostname);
+                }
 
                 if( trackers.containsKey(hostname) == true ) {
                     RkTracker t = trackers.get(hostname);
@@ -109,15 +104,6 @@ public class ClusterManager {
                 t.State = RkTracker.STATE_INACTIVE;
             }
 
-            // just for debugging
-            for( JobStatus js : jobs ) {
-                RunningJob rj = jcl.getJob(js.getJobID());
-//                System.out.format("Name: %s\n", rj.getJobName());
-//                System.out.format("Tracking URL: %s\n", rj.getTrackingURL());
-//                System.out.format("JobID: %s\n", js.getJobID().toString());
-//                System.out.format("Scheduling info: %s\n", js.getSchedulingInfo());
-            }
-
             // get some node counts in preparation for the next loop
             activeNodeCount = hostnames.size();               // count all active nodes
             for( RkTracker t : trackers.values() ) {          // and count all activating nodes
@@ -127,17 +113,20 @@ public class ClusterManager {
             }
 
             if( css == ClusterSizingStrategy.EFFICIENT ) {
-                SizeEfficient(now, wakeExe, jobs.length, activeNodeCount, activatingNodeCount, trackers);
+                SizeEfficient(now, wakeExe, jobCount, activeNodeCount, activatingNodeCount, trackers, busyHostnames);
             }
             else if( css == ClusterSizingStrategy.MANUALON ) {
-                SizeManualOn(now, jobs.length, activeNodeCount, trackers);
+                SizeManualOn(now, jobCount, activeNodeCount, trackers, busyHostnames);
             }
             else {
-                SizeAggressive(now, wakeExe, jobs.length, activeNodeCount, activatingNodeCount, trackers);
+                SizeAggressive(now, wakeExe, jobCount, activeNodeCount, activatingNodeCount, trackers, busyHostnames);
             }
         }
         catch( Exception ex ) {
             return;
+        }
+        finally {
+            yarnClient.stop();
         }
 
         return;
@@ -146,7 +135,7 @@ public class ClusterManager {
     // this will only spin up nodes once the job queue exceeds a certain number
     // this allows us to give the energy efficient nodes most of the work and only spin up new nodes
     // when we have a big backlog
-    protected static void SizeEfficient(Long now, String wakeExe, int jobCount, int activeNodeCount, int activatingNodeCount, Map<String, RkTracker> trackers) {
+    protected static void SizeEfficient(Long now, String wakeExe, int jobCount, int activeNodeCount, int activatingNodeCount, Map<String, RkTracker> trackers, Set<String> busyHostnames) {
         int newActivatingCount = 0;
         int newDeactivatingCount = 0;
         int MAX_QUEUE_SPINUP_DELTA = 10; // if the queue grows to 10 more than the number of active nodes, then start spinning up
@@ -193,8 +182,6 @@ public class ClusterManager {
         // now check if we need to deactivate nodes
         if( jobCount < activeNodeCount + MAX_QUEUE_SPINDOWN_DELTA ) {
             for( Map.Entry<String, RkTracker> e : trackers.entrySet() ) {
-                boolean br;
-
                 RkTracker t = e.getValue();
 
                 if( t.Managed == false ) {
@@ -210,8 +197,7 @@ public class ClusterManager {
                 }
 
                 // we want to shut down an active node that is doing no work ... not just any node
-                br = IsTaskTrackerRunning(t.Hostname);
-                if( br == true ) {
+                if( busyHostnames.contains(t.Hostname) == true ) {
                     continue;
                 }
 
@@ -234,7 +220,7 @@ public class ClusterManager {
 
     // this simply spins up new nodes if we have more jobs than nodes
     // it also spins down nodes if we have less jobs than nodes
-    protected static void SizeAggressive(Long now, String wakeExe, int jobCount, int activeNodeCount, int activatingNodeCount, Map<String, RkTracker> trackers) {
+    protected static void SizeAggressive(Long now, String wakeExe, int jobCount, int activeNodeCount, int activatingNodeCount, Map<String, RkTracker> trackers, Set<String> busyHostnames) {
         int newActivatingCount = 0;
         int newDeactivatingCount = 0;
 
@@ -279,8 +265,6 @@ public class ClusterManager {
         // now check if we need to deactivate nodes
         if( jobCount < activeNodeCount ) {
             for( Map.Entry<String, RkTracker> e : trackers.entrySet() ) {
-                boolean br;
-
                 RkTracker t = e.getValue();
 
                 if( t.Managed == false ) {
@@ -296,8 +280,7 @@ public class ClusterManager {
                 }
 
                 // we want to shut down an active node that is doing no work ... not just any node
-                br = IsTaskTrackerRunning(t.Hostname);
-                if( br == true ) {
+                if( busyHostnames.contains(t.Hostname) == true ) {
                     continue;
                 }
 
@@ -322,14 +305,12 @@ public class ClusterManager {
     }
 
     // does not spin up machines. only turns them off when appropriate
-    protected static void SizeManualOn(Long now, int jobCount, int activeNodeCount, Map<String, RkTracker> trackers) {
+    protected static void SizeManualOn(Long now, int jobCount, int activeNodeCount, Map<String, RkTracker> trackers, Set<String> busyHostnames) {
         int newDeactivatingCount = 0;
 
         // now check if we need to deactivate nodes
         if( jobCount < activeNodeCount ) {
             for( Map.Entry<String, RkTracker> e : trackers.entrySet() ) {
-                boolean br;
-
                 RkTracker t = e.getValue();
 
                 if( t.Managed == false ) {
@@ -345,8 +326,7 @@ public class ClusterManager {
                 }
 
                 // we want to shut down an active node that is doing no work ... not just any node
-                br = IsTaskTrackerRunning(t.Hostname);
-                if( br == true ) {
+                if( busyHostnames.contains(t.Hostname) == true ) {
                     continue;
                 }
 
@@ -366,10 +346,6 @@ public class ClusterManager {
         }
 
         return;
-    }
-
-    protected static List<String> GetTrackers(JobClient jcl) {
-        return null;
     }
 
     protected static void WakeOnLan(String exe, String address) {
@@ -433,7 +409,7 @@ public class ClusterManager {
         return true;
     }
 
-    // This will retrieve a list of TaskTrackers to manage.
+    // This will retrieve a list of NodeManagers to manage.
     protected static Map<String, RkTracker> GetTrackers(String filename) {
 
         XmlMapper xmlMapper = new XmlMapper();
@@ -450,32 +426,5 @@ public class ClusterManager {
         }
 
         return mapTrackers;
-    }
-
-    // This checks to see if the task trackers is running a task (not to see if it is alive).
-    // would be nice if there was an api for this instead of having to scrape a web page!
-    protected static boolean IsTaskTrackerRunning(String hostname) {
-        Map<String, String> mapHeaders = new HashMap<String, String>();
-
-        String html = WebServices.Get(String.format("http://%s:50060/tasktracker.jsp", hostname), mapHeaders);
-        if( html == null ) {
-            return false;
-        }
-
-        String tidy = XMLHelper.CleanXml(html);
-        if( tidy == null ) {
-            return false;
-        }
-
-        // check the response for captcha
-        org.jsoup.nodes.Document doc = Jsoup.parse(tidy);
-        Elements elsRunningTasks = doc.getElementsContainingOwnText("Running tasks");
-        Element eCenter = elsRunningTasks.first().nextElementSibling();
-        Elements elsRunning = eCenter.getElementsContainingOwnText("RUNNING");
-        if( elsRunning.size() == 0 ) {
-            return false;
-        }
-
-        return true;
     }
 }

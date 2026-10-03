@@ -163,7 +163,7 @@ public class HBXMapReduce264 extends HBXMapReduceBase {
     protected void updateConfiguration( Configuration c, HBXWrapperParams hbxwp ) {
 
         c.set("fs.defaultFS", hbxwp.Hdfs);
-        c.set("mapred.job.tracker", hbxwp.JobTracker + ":" + hbxwp.JobTrackerPort.toString());
+        c.set("yarn.resourcemanager.address", hbxwp.JobTracker + ":" + hbxwp.JobTrackerPort.toString());
 
         c.set("username", hbxwp.Username);
         c.set("password", hbxwp.Password);
@@ -183,7 +183,7 @@ public class HBXMapReduce264 extends HBXMapReduceBase {
         c.set("mkvextract", hbxwp.MKVExtract);
         c.set("ssaconverter", hbxwp.SSAConverter);
 
-        c.set("mapred.job.priority", JobPriority.NORMAL.toString()); // TODO: dynamically configure this
+        c.set("mapreduce.job.priority", JobPriority.NORMAL.toString()); // TODO: dynamically configure this
 
 //        c.unset("fs.default.name"); // tried to remove warning from hadoop about fs.default.name being deprecated, but job submission barfs.  Go hadoop.
         return;
