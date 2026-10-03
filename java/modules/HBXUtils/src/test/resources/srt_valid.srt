@@ -1,0 +1,13 @@
+1
+00:00:01,000 --> 00:00:04,000
+Hello, world.
+
+2
+00:00:05,500 --> 00:00:08,250
+Second subtitle line.
+Multi-line text here.
+
+3
+01:02:03,004 --> 01:02:05,000
+Third entry with <i>formatting</i>.
+

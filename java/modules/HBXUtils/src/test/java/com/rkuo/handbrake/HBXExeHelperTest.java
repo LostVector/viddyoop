@@ -28,9 +28,18 @@ public class HBXExeHelperTest {
     }
 
     @Test
-    public void testParseMKVInfo() {
+    public void testParseMKVInfo() throws Exception {
 
-        String scan = com.rkuo.io.File.ToString("res/mkvinfo.txt");
+        String scan;
+        java.io.InputStream is = getClass().getResourceAsStream("/mkvinfo.txt");
+        Assert.assertNotNull("missing test fixture: /mkvinfo.txt", is);
+        try {
+            scan = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        finally {
+            is.close();
+        }
+
         MKVInfoState state = MKVExeHelper.ParseMKVInfo(scan);
 
         Assert.assertTrue(state != null);
