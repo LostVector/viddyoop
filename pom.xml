@@ -18,6 +18,7 @@
 
     <hadoop.version>3.4.3</hadoop.version>
     <jackson.version>2.15.4</jackson.version>
+    <temporal.version>1.38.0</temporal.version>
   </properties>
 
   <dependencyManagement>
@@ -50,6 +51,11 @@
       </dependency>
 
       <!-- third-party libraries (previously vendored in java/lib) -->
+      <dependency>
+        <groupId>org.xerial</groupId>
+        <artifactId>sqlite-jdbc</artifactId>
+        <version>3.46.1.3</version>
+      </dependency>
       <dependency>
         <groupId>net.sf.jtidy</groupId>
         <artifactId>jtidy</artifactId>
@@ -85,6 +91,19 @@
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-client</artifactId>
         <version>${hadoop.version}</version>
+      </dependency>
+
+      <!-- Temporal durable workflow engine (v2 orchestration) -->
+      <dependency>
+        <groupId>io.temporal</groupId>
+        <artifactId>temporal-sdk</artifactId>
+        <version>${temporal.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.temporal</groupId>
+        <artifactId>temporal-testing</artifactId>
+        <version>${temporal.version}</version>
+        <scope>test</scope>
       </dependency>
 
       <!-- test -->
@@ -166,6 +185,7 @@
 
   <modules>
     <module>java/modules/RKUtils</module>
+    <module>java/modules/ViddyoopCore</module>
     <module>java/modules/RKSSHUtils</module>
     <module>java/modules/RKHadoopUtils</module>
     <module>java/modules/HBXUtils</module>

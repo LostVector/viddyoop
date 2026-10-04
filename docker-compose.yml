@@ -1,0 +1,37 @@
+# Local development stack for viddyoop v2.
+#
+# The Temporal dev server is a single self-contained process (embedded
+# SQLite persistence via --db-filename, built-in Web UI). For a single
+# machine this is a legitimate deployment; it is not an HA setup.
+#
+#   docker compose up -d
+#   Web UI: http://localhost:8233
+#   gRPC:   localhost:7233
+#
+# The pipeline worker runs from the repo (step8 adds the packaged service):
+#   java -jar java/modules/ViddyoopCore/target/...  (worker main lands in step8)
+
+services:
+  temporal:
+    image: temporalio/temporal:latest
+    entrypoint: ["temporal"]
+    command:
+      - "server"
+      - "start-dev"
+      - "--ip"
+      - "0.0.0.0"
+      - "--db-filename"
+      - "/var/lib/temporal/temporal.db"
+    ports:
+      - "7233:7233"   # gRPC
+      - "8233:8233"   # Web UI
+    volumes:
+      - temporal-data:/var/lib/temporal
+    healthcheck:
+      test: ["CMD", "temporal", "workflow", "list", "--limit", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  temporal-data:
