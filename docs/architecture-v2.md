@@ -44,8 +44,10 @@ scope and remaining proof.
 The container trials exposed and fixed SQLite JNI extraction onto a noexec tmpfs
 and missing UID lookup for a numeric-only account. The image now has a named
 UID/GID 1000 account and bounded executable temporary mounts. Actual host iTunes
-behavior, other host sharing/ACL configurations, representative media, AMD64 CI,
-publication and operational retention policy still need validation. Legacy code
+behavior, other host sharing/ACL configurations, representative media and
+operational retention policy still need validation. Remote validation is tracked
+in [draft PR #8](https://github.com/LostVector/viddyoop/pull/8/checks); publication
+requires the default-branch gates. Legacy code
 remains until those deployment gates pass. A persistent dev-server volume and
 successful tests do not establish production suitability of that server.
 
@@ -465,7 +467,8 @@ exercises an actual worker-container kill and six-root volume backup/restore.
 including importer restart and observed rejection. CI runs the full suite and
 profile on pull requests, adding production-timeout and volume-restore checks on
 default-branch pushes before GHCR publication. These checks pass locally on ARM64;
-remote CI and publication have not run from this workspace.
+remote CI is tracked in [PR #8 checks](https://github.com/LostVector/viddyoop/pull/8/checks).
+The native AMD64 build passes; default-branch publication gates remain separate.
 
 ## Recovery verification status
 
@@ -476,9 +479,9 @@ remote CI and publication have not run from this workspace.
 | Worker termination during encoding | Pinned ARM64 image: real HandBrake and worker JVM killed after progress; same workflow completes under production policies. Compose restore kills the entire worker container and also passes with media on a macOS VirtioFS share | Representative inputs; PostgreSQL backend interruption |
 | Missing intermediates | Real activity test deletes normalized media, then encoding regenerates it; passes in pinned ARM64 suite | Representative host inputs |
 | Source replacements and destination conflicts | Cleanup tests preserve replacements, including a claimed race; publication rejects conflicts | Include representative real inputs in operational trial |
-| Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Boot-scoped generations preserve the original; one durable pending submission completes without duplicate registration. New intake pauses, then resumes after quarantine | Other sharing backends and live-workflow VM power-loss trial |
+| Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Guarded runtime retains namespace UUID, recovers one pending submission without duplicate registration and preserves the original; intake resumes after quarantine | Other sharing backends and live-workflow VM power-loss trial |
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
-| Target toolchain | All 125 core tests (PostgreSQL external endpoint) and Compose smoke pass with Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17, including surround/text subtitles and resource checks | AMD64 CI and representative inputs |
+| Target toolchain | All 125 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. Native AMD64 CI passes; container checks are tracked on PR #8 | Remote container CI result and representative inputs |
 | Broader codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
