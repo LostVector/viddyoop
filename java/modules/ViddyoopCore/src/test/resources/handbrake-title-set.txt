@@ -1,0 +1,95 @@
+JSON Title Set: {
+    "MainFeature": 0,
+    "TitleList": [
+        {
+            "AngleCount": 1,
+            "AudioList": [
+                {
+                    "Attributes": {
+                        "AltCommentary": false,
+                        "Commentary": false,
+                        "Default": false,
+                        "Normal": false,
+                        "Secondary": false,
+                        "VisuallyImpaired": false
+                    },
+                    "BitRate": 96000,
+                    "ChannelCount": 1,
+                    "ChannelLayout": "mono",
+                    "Codec": 2048,
+                    "CodecName": "ac3",
+                    "CodecParam": 86019,
+                    "Description": "Unknown (AC3, 1.0 ch, 96 kbps)",
+                    "LFECount": 0,
+                    "Language": "Unknown",
+                    "LanguageCode": "und",
+                    "SampleRate": 48000,
+                    "TrackNumber": 1
+                }
+            ],
+            "ChapterList": [
+                {
+                    "Duration": {
+                        "Hours": 0,
+                        "Minutes": 0,
+                        "Seconds": 2,
+                        "Ticks": 180450
+                    },
+                    "Name": ""
+                }
+            ],
+            "Color": {
+                "BitDepth": 8,
+                "ChromaLocation": 1,
+                "ChromaSubsampling": "4:2:0",
+                "Format": 0,
+                "Matrix": 6,
+                "Primary": 6,
+                "Range": 1,
+                "Transfer": 1
+            },
+            "Container": "matroska,webm",
+            "Crop": [
+                0,
+                0,
+                0,
+                0
+            ],
+            "Duration": {
+                "Hours": 0,
+                "Minutes": 0,
+                "Seconds": 2,
+                "Ticks": 180450
+            },
+            "FrameRate": {
+                "Den": 1125000,
+                "Num": 27000000
+            },
+            "Geometry": {
+                "Height": 180,
+                "PAR": {
+                    "Den": 1,
+                    "Num": 1
+                },
+                "Width": 320
+            },
+            "Index": 1,
+            "InterlaceDetected": false,
+            "KeepDuplicateTitles": false,
+            "LooseCrop": [
+                0,
+                0,
+                0,
+                0
+            ],
+            "Metadata": {},
+            "Name": "viddyoop-adapter-fixture",
+            "Path": "/inbox/fixture.mkv",
+            "Playlist": -1,
+            "SubtitleList": [],
+            "Type": 3,
+            "VideoCodec": "mpeg4"
+        }
+    ]
+}
+

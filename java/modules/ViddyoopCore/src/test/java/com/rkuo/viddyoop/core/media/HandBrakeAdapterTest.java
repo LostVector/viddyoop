@@ -8,7 +8,7 @@ public class HandBrakeAdapterTest {
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
     @Test public void parsesCapturedRealScanAndRejectsInvalidMedia() throws Exception {
-        Path log = Path.of(getClass().getResource("/handbrake-title-set.log").toURI());
+        Path log = Path.of(getClass().getResource("/handbrake-title-set.txt").toURI());
         var scan = HandBrakeAdapter.parseScan(log);
         Assert.assertEquals(320, scan.width());
         Assert.assertEquals(180, scan.height());
