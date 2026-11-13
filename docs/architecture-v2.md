@@ -90,7 +90,8 @@ identify the actual output resolution.
   E-AC-3 in 42, AC-3 in one. Twenty-five E-AC-3 tracks report Dolby Atmos.
   The first 64 surround packet hashes match the NAS source in eight matched
   source/output pairs, supporting passthrough for those samples; this is not a
-  whole-file identity check. Do not unconditionally convert E-AC-3/Atmos to AC-3.
+  whole-file identity check. These observed E-AC-3/Atmos tracks do not override
+  the operator's explicit AAC + AC-3 compatibility policy below.
 - All 143 subtitle tracks are selectable `mov_text`, in English, Spanish or
   French. None is marked forced. This does not establish the selection or
   foreign-dialogue burn-in policy for every source.
@@ -101,11 +102,51 @@ These are compatibility requirements for the pilot, not proof that the current
 adapter implements them. It still emits the previous 1080p AVC/AAC+AC-3 profile;
 its passing recovery suite does not validate this new media target. Implement a
 versioned profile and validate dimensions, color/HDR/Dolby Vision metadata,
-surround preservation, subtitles and representative playback before accepting
+the intended AAC/AC-3 track layout, subtitles and representative playback before accepting
 it. HEVC compatibility is part of migration, rather than a deferred new-codec
-extension. Named preset, exact filter/crop rules, audio fallback rules and
-handling of unsupported HDR variants still need to be made explicit; the output
-files do not encode a complete HandBrake preset.
+extension. Named preset, exact filter/crop rules and handling of unsupported HDR
+variants still need to be made explicit; the output files do not encode a
+complete HandBrake preset.
+
+### Audio and language contract (operator clarification)
+
+The goal is an Apple/iTunes-compatible encode. The operator's explicit policy
+supersedes recommendations inferred from the sampled files:
+
+- Encode the selected primary source to the first/default AAC stereo track at
+  **224 kbps, 48 kHz, DRC 2.0**. Preserve the legacy Dolby Pro Logic II stereo
+  mixdown. Additional selected languages receive their own AAC tracks; all AAC
+  tracks precede the surround group.
+- For selected surround sources, append **AC-3**: pass through an existing AC-3
+  source; otherwise encode AC-3. The legacy fallback is 448 kbps with DRC 0.0;
+  passthrough preserves the source stream. The legacy mono/stereo-only case does
+  not add a redundant surround track. E-AC-3/Atmos passthrough is observed in
+  recent files but is not a replacement for this explicitly requested AC-3
+  compatibility track.
+- Port the selection behavior from
+  `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
+  or using the sampled subtitle languages as an audio allowlist. Sample
+  configuration uses English primary / Japanese secondary; retain configurable
+  languages and normalize their full-name/ISO representations for modern scans.
+- `GetPrimaryTrack` selects the first AC-3/E-AC-3 5.1/5.0 track in the primary
+  language, then the first such Dolby surround track in any language, then the
+  first track in the primary language. `GetBestAudioTrack` selects a secondary
+  language Dolby 5.1/5.0 track, otherwise the first secondary-language track.
+  Add the secondary only if distinct from the primary; if nothing is selected,
+  use the first available input track. Preserve this ordering explicitly,
+  including the any-language surround fallback ahead of a primary-language
+  non-Dolby track. This wrapper policy is separate from the preprocessor's
+  preferred track for legacy DTS conversion.
+- Keep subtitle language/default metadata and the legacy bibliographic-to-
+  terminology language-code mapping. Subtitle extraction does not establish a
+  new English/Spanish/French-only selection policy.
+
+The current adapter already supplies 224 kbps / DRC 2.0 for AAC and AC-3
+passthrough-or-encode for surround, but lacks primary/secondary audio selection
+and the scan's audio-language field. Its current all-track behavior is a
+migration gap. Acceptance must exercise multiple languages, duplicate secondary
+selection, foreign-language fallback, AAC-first ordering, AC-3 packet preservation
+and non-AC-3 surround conversion. No representative pilot has run yet.
 
 ## Why move off Hadoop
 
