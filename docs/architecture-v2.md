@@ -47,8 +47,9 @@ shared original. The macOS host remained running during this trial.
 The container trials exposed and fixed SQLite JNI extraction onto a noexec tmpfs
 and missing UID lookup for a numeric-only account. The image now has a named
 UID/GID 1000 account and bounded executable temporary mounts. Actual host iTunes
-behavior, other host sharing/ACL configurations, representative media and
-operational retention policy still need validation. Remote validation is tracked
+behavior remains unverified and is deferred while automatic delivery is disabled.
+Other host sharing/ACL configurations, representative media and operational
+retention policy still need validation. Remote validation is tracked
 in [draft PR #8](https://github.com/LostVector/viddyoop/pull/8/checks); publication
 requires the default-branch gates. Legacy code
 remains until those deployment gates pass. A persistent dev-server volume and
@@ -62,9 +63,49 @@ successful tests do not establish production suitability of that server.
 | Scheduler | **Temporal** durable workflows. Pinned dev server/SQLite for local trials; operational deployment requires Temporal Server with supported database persistence (planned PostgreSQL fallback). Replaces Hadoop/YARN and a hand-rolled queue/state machine |
 | Catalog store | SQLite for domain data only: ingest identities, published artifacts, import receipts, `itunes_items`, and encode stats history (Temporal holds workflow state, not the catalog) |
 | Stack | Java 17, Maven multi-module, `io.temporal:temporal-sdk` |
-| iTunes | iTunes runs on the same machine as Docker; import via the "Automatically Add to iTunes.localized" folder (never by editing iTunes Library.xml) |
+| Host delivery | Intended recipient is the TV app on the same machine. Initial pilot writes only to a scratch library; Automatically Add to TV integration is deferred. Never edit the host library/export |
 | iTunes visibility | A read-only indexer parses iTunes Library.xml into SQLite (`itunes_items`), enabling dedupe and status views |
-| HandBrake | Target the Debian `handbrake-cli` 1.6.x shipped in the image (requires an adapter for 1.x scan/CLI surface) |
+| HandBrake | Prepared image currently pins Debian `handbrake-cli` 1.6.x. Revisit the toolchain pin against the observed HandBrake 1.11.2 HEVC/HDR/Dolby Vision outputs before claiming media compatibility |
+
+### Observed output compatibility target (2026-11-13)
+
+The operator now uses H.265 output. A read-only scan selected 59 library files
+using recent filesystem modification/creation times, recent TV episodes and
+older files from the other library volumes. The current-format cohort contains
+43 HEVC files (31 movies and 12 episodes); the controls contain 14 older AVC
+files and two protected entries. Filesystem and embedded creation dates can
+reflect moves or inherited metadata, so neither alone establishes encode order.
+
+All 43 HEVC files have an MP4 container with an `.m4v` extension, `hvc1` Main 10
+video, 10-bit 4:2:0 pixels, x265 CRF 22 and VBV max-rate/buffer values of 60000
+kbps/kbits. The x265 values come from embedded encoder SEI, rather than filename
+or bitrate guesses. Forty-one identify HandBrake 1.11.2 and two identify 1.10.2.
+Their resolution retains the source's 4K detail with cropping in some cases;
+nominal rates are 23.976 or 24 fps. A filename containing "1080p" does not reliably
+identify the actual output resolution.
+
+- Preserve HDR/SDR characteristics: 36 carry BT.2020/PQ HDR10 mastering metadata,
+  including 28 with Dolby Vision Profile 8 metadata; seven are BT.709 SDR.
+- Every file has default AAC-LC stereo at 48 kHz plus a non-default 5.1 track:
+  E-AC-3 in 42, AC-3 in one. Twenty-five E-AC-3 tracks report Dolby Atmos.
+  The first 64 surround packet hashes match the NAS source in eight matched
+  source/output pairs, supporting passthrough for those samples; this is not a
+  whole-file identity check. Do not unconditionally convert E-AC-3/Atmos to AC-3.
+- All 143 subtitle tracks are selectable `mov_text`, in English, Spanish or
+  French. None is marked forced. This does not establish the selection or
+  foreign-dialogue burn-in policy for every source.
+- Nineteen files have chapter entries. All 43 place `moov` after `mdat` (no
+  fast-start layout in this sample).
+
+These are compatibility requirements for the pilot, not proof that the current
+adapter implements them. It still emits the previous 1080p AVC/AAC+AC-3 profile;
+its passing recovery suite does not validate this new media target. Implement a
+versioned profile and validate dimensions, color/HDR/Dolby Vision metadata,
+surround preservation, subtitles and representative playback before accepting
+it. HEVC compatibility is part of migration, rather than a deferred new-codec
+extension. Named preset, exact filter/crop rules, audio fallback rules and
+handling of unsupported HDR variants still need to be made explicit; the output
+files do not encode a complete HandBrake preset.
 
 ## Why move off Hadoop
 
@@ -429,9 +470,11 @@ leftovers (`IHBXWrapperService`, `HBXWrapperConfig`), empty stubs
    verified library artifact; failed submissions retain recoverable input.
 3. **step9 — catalog integration and optional iTunes delivery**: add
    `itunes-import`, `itunes-index`, and delivery reconciliation. Finish the
-   Dockerfile, full Compose stack, and GHCR build. Verify host import behavior,
-   pinned versions, resource limits, health checks, and backup/restore before
-   operational deployment.
+   Dockerfile, full Compose stack, and GHCR build. Verify pinned versions,
+   resource limits, health checks, and backup/restore before operational deployment.
+   The initial pilot writes to a scratch library; TV watched-folder delivery is
+   deferred at the operator's request. Verify actual TV import behavior before
+   enabling that optional integration.
 4. **step10 — retire the old system**: after representative files complete and
    recovery checks pass on the replacement, remove Hadoop/SSH/broker/collector
    modules and vestigial code; README quickstart becomes `docker compose up`.
@@ -520,11 +563,13 @@ opt-in; see the README for disposable filesystem setup and its capacity guard.
 - Source generation, isolated cleanup claims, and collision handling are
   implemented; snapshot/intermediate retention and garbage collection remain
   to be defined before operational rollout.
-- The host has Music 1.7 and no iTunes installation. Confirm the intended recipient
-  app, watched-folder behavior and reliable import evidence before enabling host
-  delivery. Synthetic iTunes-compatible fixtures do not establish app support.
+- The intended recipient is Apple TV. The operator has deferred its Automatically
+  Add to TV integration; pilot outputs go to a separate scratch library with
+  automatic import disabled. Validate watched-folder behavior and reliable import
+  evidence before enabling delivery. Synthetic iTunes-compatible fixtures do not
+  establish TV support.
 - Private container files are readable by native macOS UID 501 on the tested
   VirtioFS mount. Validate other sharing backends/ACLs and the recipient app's
-  actual access before rollout.
+  actual access before enabling delivery.
 - Priority is deferred; verify server/SDK support and ordering semantics
   against pinned versions before choosing native priority or separate queues.
