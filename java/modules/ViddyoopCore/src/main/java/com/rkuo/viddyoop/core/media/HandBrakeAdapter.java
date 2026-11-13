@@ -2,6 +2,7 @@ package com.rkuo.viddyoop.core.media;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rkuo.handbrake.SubtitlePolicy;
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Duration;
@@ -57,6 +58,12 @@ public final class HandBrakeAdapter {
     }
 
     public List<String> encodeCommand(Path source, Path output, Scan scan, boolean transportStream) {
+        return planCommand(source, output, scan, transportStream).arguments();
+    }
+
+    private record CommandPlan(List<String> arguments, int audioTracks) {}
+
+    private CommandPlan planCommand(Path source, Path output, Scan scan, boolean transportStream) {
         boolean fullHd = scan.width() > 1280 || scan.height() > 720;
         List<String> args = new ArrayList<>(List.of(executable, "--input", source.toString(),
                 "--output", output.toString(), "--title", Integer.toString(scan.title()),
@@ -66,23 +73,28 @@ public final class HandBrakeAdapter {
                 "--rate", "29.97", "--pfr", "--crop", "0:0:0:0", "--maxWidth", "1920",
                 "--maxHeight", "1080", "--auto-anamorphic", "--markers"));
         List<String> tracks = new ArrayList<>(), encoders = new ArrayList<>(), mixdowns = new ArrayList<>();
-        List<String> bitrates = new ArrayList<>(), drc = new ArrayList<>();
+        List<String> bitrates = new ArrayList<>(), drc = new ArrayList<>(), rates = new ArrayList<>();
         for (Audio audio : scan.audio()) {
             tracks.add(Integer.toString(audio.track())); encoders.add("av_aac");
-            mixdowns.add("dpl2"); bitrates.add("224"); drc.add("2.0");
+            mixdowns.add("dpl2"); bitrates.add("224"); drc.add("2.0"); rates.add("48");
         }
         for (Audio audio : scan.audio()) {
             if (audio.channels() <= 2) continue;
             tracks.add(Integer.toString(audio.track()));
-            encoders.add(audio.codec().equalsIgnoreCase("ac3") ? "copy:ac3" : "ac3");
-            mixdowns.add("5point1"); bitrates.add("448"); drc.add("0.0");
+            String codec = audio.codec().toLowerCase(Locale.ROOT);
+            boolean passthrough = codec.equals("ac3") || codec.equals("eac3");
+            encoders.add(passthrough ? "copy:" + codec : "ac3");
+            mixdowns.add(passthrough ? "auto" : "5point1");
+            bitrates.add(passthrough ? "auto" : "448");
+            rates.add(passthrough ? "auto" : "48");
+            drc.add("0.0");
         }
         if (tracks.isEmpty()) args.addAll(List.of("--audio", "none"));
         else args.addAll(List.of("--audio", String.join(",", tracks), "--aencoder", String.join(",", encoders),
                 "--mixdown", String.join(",", mixdowns), "--ab", String.join(",", bitrates),
-                "--arate", "48", "--drc", String.join(",", drc)));
+                "--arate", String.join(",", rates), "--drc", String.join(",", drc)));
         if (transportStream) args.addAll(List.of("--decomb", "--detelecine"));
-        return List.copyOf(args);
+        return new CommandPlan(List.copyOf(args), tracks.size());
     }
 
     public void encode(Path source, Path output, Scan scan, boolean transportStream, Path log, Runnable heartbeat)
@@ -93,21 +105,33 @@ public final class HandBrakeAdapter {
     public void encode(Path source, Path output, Scan scan, boolean transportStream, Path log, Runnable heartbeat,
                        List<com.rkuo.viddyoop.core.pipeline.PreprocessResult.Subtitle> subtitles)
             throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>(encodeCommand(source, output, scan, transportStream));
-        if (!subtitles.isEmpty()) {
-            for (var subtitle : subtitles) {
+        runner.run(encodeCommand(source, output, scan, transportStream, subtitles), log, Duration.ofHours(24), heartbeat);
+    }
+
+    public List<String> encodeCommand(Path source, Path output, Scan scan, boolean transportStream,
+                       List<com.rkuo.viddyoop.core.pipeline.PreprocessResult.Subtitle> subtitles) throws IOException {
+        CommandPlan plan = planCommand(source, output, scan, transportStream);
+        List<String> command = new ArrayList<>(plan.arguments());
+        var selected = SubtitlePolicy.select(subtitles, plan.audioTracks(), subtitle -> subtitle.language);
+        if (selected.size() < subtitles.size()) {
+            org.slf4j.LoggerFactory.getLogger(HandBrakeAdapter.class).warn(
+                    "Keeping {} of {} subtitles under the {} total-track limit",
+                    selected.size(), subtitles.size(), SubtitlePolicy.MAX_OUTPUT_TRACKS);
+        }
+        if (!selected.isEmpty()) {
+            for (var subtitle : selected) {
                 if (subtitle.path.contains(",")) throw new IOException("Subtitle paths cannot contain commas");
             }
-            command.addAll(List.of("--srt-file", String.join(",", subtitles.stream().map(s -> s.path).toList()),
-                    "--srt-codeset", String.join(",", Collections.nCopies(subtitles.size(), "UTF-8")),
-                    "--srt-lang", String.join(",", subtitles.stream().map(s -> s.language).toList())));
-            for (int i = 0; i < subtitles.size(); i++) {
-                if (subtitles.get(i).defaultTrack) {
+            command.addAll(List.of("--srt-file", String.join(",", selected.stream().map(s -> s.path).toList()),
+                    "--srt-codeset", String.join(",", Collections.nCopies(selected.size(), "UTF-8")),
+                    "--srt-lang", String.join(",", selected.stream().map(s -> SubtitlePolicy.languageCode(s.language)).toList())));
+            for (int i = 0; i < selected.size(); i++) {
+                if (selected.get(i).defaultTrack) {
                     command.addAll(List.of("--srt-default", Integer.toString(i + 1)));
                     break;
                 }
             }
         }
-        runner.run(command, log, Duration.ofHours(24), heartbeat);
+        return List.copyOf(command);
     }
 }

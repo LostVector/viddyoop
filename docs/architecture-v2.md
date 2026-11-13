@@ -3,6 +3,8 @@
 Status: accepted (2026-10-03), revised 2026-11-13. Supersedes the 2014 Hadoop-based architecture.
 Step7 is implemented. Step8 recovery gates pass with synthetic media on Linux
 ARM64; step9 host integration and step10 retirement remain in progress.
+Test counts below describe the PR #8 checkpoint unless explicitly labeled as
+track-policy follow-up results; the new policy changes await pinned-container CI.
 
 The runnable pipeline registers durable submission identities and immutable source
 snapshots, validates media, and uses separate Temporal activity queues for real
@@ -88,10 +90,10 @@ Record each deliberate behavior change separately from a tool syntax update.
 |---|---|---|
 | Primary/secondary audio and foreign-language fallback | `AudioTrackSelection` in HBXUtils, extracted from `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Shared selection now drives the legacy wrapper and has characterization tests. Adapter still selects every track and has no language settings; connect it to this helper through modern scan-language normalization and retained configuration |
 | AAC-first ordering, DPL2, 48 kHz, 224 kbps, DRC 2.0 | `GenerateHandbrakeParams` AAC loop; `ExecuteHandbrake` argument translation | Numeric settings/order already present. Keep them, with a supported AAC encoder for the runtime; do not replace them with estimates from output bitrates |
-| Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. New adapter directly encodes all non-AC-3 multichannel sources and forces 5.1/448/48 kHz even in passthrough argument positions; distinguish source-preserving passthrough from encoding settings |
-| E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | This is an old tool workaround, not evidence that every Dolby stream should be retained or that the old command provides a correct fallback. Adapt it to the user's stated AC-3 fallback policy and verify the emitted media |
-| Subtitle languages/defaults, extraction and repair | `ExtractMKVSubtitles`, `ISO6392CodeBibliographicToTerminology`, subtitle loop in `GenerateHandbrakeParams` | New normalizer retains language/default but lacks the legacy language-code mapping. Preserve that mapping and selection behavior; observed English/Spanish/French tracks are not an allowlist |
-| Subtitle count and unsupported formats | Legacy subtitle loop stops at 31 total tracks; extractor skips unsupported formats | Characterize these limits. New flow intentionally fails unsupported codecs for review under the accepted recovery contract; do not silently make the legacy truncation a new product requirement |
+| Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. Modern adapter now passes through AC-3/E-AC-3 with automatic source settings and otherwise encodes AC-3; retain the separate DTS-preprocessing comparison |
+| E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | User confirmed AC-3/E-AC-3 passthrough with AC-3 fallback. Modern adapter requests copy:eac3 explicitly; the legacy generator's old workaround remains characterized separately |
+| Subtitle languages/defaults, extraction and repair | `ExtractMKVSubtitles`, `ISO6392CodeBibliographicToTerminology`, subtitle loop in `GenerateHandbrakeParams` | Legacy mapping is now shared in SubtitlePolicy and applied at the modern encoder boundary. Keep all supported text languages, prioritized English/Spanish/French; retain per-track defaults |
+| Subtitle count and unsupported formats | Legacy subtitle loop stops at 31 total tracks; extractor skips unsupported formats | User confirmed the existing count limit. Both paths now share the 31-total-track budget and prioritize before truncation; new flow still fails unsupported codecs for review |
 | Audio-less sources | `EncodeOriginal` rejects inputs with no audio | New flow currently accepts silent video. This is an outstanding behavior difference; synthetic silent-video success does not prove legacy parity |
 | Video quality, frame rate, crop, scaling, chapters and TS filters | `GenerateHandbrakeParams` and `MAX_XRES`/`MAX_YRES` | Baseline is x264, RF20/22, 29.97 peak, zero crop, 1920x1080 ceiling, anamorphic handling, markers and TS decomb/detelecine. H.265 is explicitly requested; use the output survey to identify and validate further video updates, without silently redefining unrelated rules |
 
@@ -123,8 +125,9 @@ AAC-first audio and selected language order. All eight observed surround tracks
 are E-AC-3 while the legacy generator requests its `copy:ac3` workaround. Five
 pairs have different subtitle inventories; seven retain the input dimensions
 and one is cropped. These are explicit comparison differences, not silently
-accepted matches. The operator has been asked to settle Dolby passthrough and
-subtitle selection policy against these concrete targets.
+accepted matches. The operator confirmed AC-3/E-AC-3 passthrough with AC-3 fallback, and all
+supported text subtitle languages with English/Spanish/French priority under the
+existing total-track limit.
 
 The seven newer inputs have no reliable current-profile output match in the
 scanned libraries. A renamed, older 1080p/Japanese-only title candidate remains
@@ -158,8 +161,8 @@ identify the actual output resolution.
   E-AC-3 in 42, AC-3 in one. Twenty-five E-AC-3 tracks report Dolby Atmos.
   The first 64 surround packet hashes match the NAS source in eight matched
   source/output pairs, supporting passthrough for those samples; this is not a
-  whole-file identity check. These observed E-AC-3/Atmos tracks do not override
-  the operator's explicit AAC + AC-3 compatibility policy below.
+  whole-file identity check. The operator subsequently confirmed passing through
+  existing AC-3/E-AC-3, with AC-3 encoding as the fallback.
 - All 143 subtitle tracks are selectable `mov_text`, in English, Spanish or
   French. None is marked forced. This does not establish the selection or
   foreign-dialogue burn-in policy for every source.
@@ -185,12 +188,11 @@ supersedes recommendations inferred from the sampled files:
   **224 kbps, 48 kHz, DRC 2.0**. Preserve the legacy Dolby Pro Logic II stereo
   mixdown. Additional selected languages receive their own AAC tracks; all AAC
   tracks precede the surround group.
-- For selected surround sources, append **AC-3**: pass through an existing AC-3
-  source; otherwise encode AC-3. The legacy fallback is 448 kbps with DRC 0.0;
-  passthrough preserves the source stream. The legacy mono/stereo-only case does
-  not add a redundant surround track. E-AC-3/Atmos passthrough is observed in
-  recent files but is not a replacement for this explicitly requested AC-3
-  compatibility track.
+- For selected surround sources, **pass through existing AC-3 or E-AC-3**;
+  otherwise encode AC-3 at the existing 448 kbps / DRC 0.0 fallback settings.
+  Passthrough uses automatic mixdown/sample-rate/bitrate settings to preserve
+  the source stream. The legacy mono/stereo-only case does not add a redundant
+  surround track. This is the confirmed modernization of the old E-AC-3 workaround.
 - Reuse `HBXUtils/.../AudioTrackSelection.java`, extracted from the selection
   behavior in `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
   or using the sampled subtitle languages as an audio allowlist. Sample
@@ -205,16 +207,30 @@ supersedes recommendations inferred from the sampled files:
   including the any-language surround fallback ahead of a primary-language
   non-Dolby track. This wrapper policy is separate from the preprocessor's
   preferred track for legacy DTS conversion.
-- Keep subtitle language/default metadata and the legacy bibliographic-to-
-  terminology language-code mapping. Subtitle extraction does not establish a
-  new English/Spanish/French-only selection policy.
+- Keep all supported text subtitle languages, prioritizing **English, Spanish,
+  French**, then other languages in original order. Use the existing
+  bibliographic-to-terminology mapping (for example `fre` to `fra`). Keep each
+  retained track's default metadata; priority does not assign a new default.
+- Preserve the existing **31 total output tracks** limit, including one video and
+  every emitted audio track. Two audio outputs leave 28 subtitle slots; four
+  leave 26. Apply priority before the cutoff and report how many tracks are
+  retained when the budget is exceeded. `SubtitlePolicy` is shared by the legacy
+  wrapper and the modern adapter, so the ordering and budget use the same rules.
 
-The current adapter already supplies 224 kbps / DRC 2.0 for AAC and AC-3
-passthrough-or-encode for surround, but lacks primary/secondary audio selection
+The current adapter supplies 224 kbps / DRC 2.0 for AAC, confirmed Dolby
+passthrough-or-AC-3 fallback and shared subtitle priority/budget, but lacks primary/secondary audio selection
 and the scan's audio-language field. Its current all-track behavior is a
 migration gap. Acceptance must exercise multiple languages, duplicate secondary
 selection, foreign-language fallback, AAC-first ordering, AC-3 packet preservation
 and non-AC-3 surround conversion. No representative pilot has run yet.
+
+Local validation of the confirmed track-policy changes passes Java 17 reactor
+verification (232 tests, zero failures/errors, 17 opt-in skips). A separate
+2-second synthetic native test verifies AAC stereo first and identical E-AC-3
+surround payload hashes through passthrough. Subtitle tests cover alias priority,
+stable remaining-language order, output-audio expansion in the 31-track budget,
+and default-track indices after ordering/truncation. These results do not claim
+a full NAS encode or validation of the pending HEVC profile.
 
 ## Why move off Hadoop
 

@@ -123,6 +123,26 @@ public class LegacyAudioPolicyTest {
         assertEquals(Integer.valueOf(0), params.AudioBitrates.get(1));
     }
 
+    @Test public void subtitlePriorityUsesLegacyBudgetAfterAudioExpansion() {
+        HBXSubtitleTrack[] subtitles = new HBXSubtitleTrack[32];
+        for (int i = 0; i < subtitles.length; i++) {
+            subtitles[i] = new HBXSubtitleTrack();
+            subtitles[i].Language = "jpn";
+            subtitles[i].Filename = "other-" + i + ".srt";
+        }
+        subtitles[29].Language = "fre";
+        subtitles[29].Default = true;
+        subtitles[30].Language = "spa";
+        subtitles[31].Language = "eng";
+        HandBrakeExeParams params = HBXBaseWrapperLogic.GenerateHandbrakeParams("HandBrakeCLI", "input.mkv", "output.m4v",
+                1920, 1080, new HBXAudioTrack[]{track(1, "English", "ac3", "5.1 ch")}, subtitles, true, null, null);
+        assertEquals(2, params.AudioTracks.size());
+        assertEquals(28, params.SrtFiles.size());
+        assertEquals(Arrays.asList("eng", "spa", "fre"), params.SrtLanguages.subList(0, 3));
+        assertEquals(Integer.valueOf(3), params.SrtDefault);
+        assertEquals("other-24.srt", params.SrtFiles.get(27));
+    }
+
     private static HandBrakeExeParams parameters(HBXAudioTrack... tracks) {
         return HBXBaseWrapperLogic.GenerateHandbrakeParams("HandBrakeCLI", "input.mkv", "output.m4v",
                 1920, 1080, tracks, new HBXSubtitleTrack[0], true, null, null);

@@ -506,71 +506,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
     // Converts three letter bibliographic code to terminology code (which is the data we get from mkvinfo)
     protected static String ISO6392CodeBibliographicToTerminology(String code) {
-
-        String outCode;
-
-        if( code.compareToIgnoreCase("alb") == 0 ) {
-            outCode = "sqi";
-        }
-        else if( code.compareToIgnoreCase("arm") == 0 ) {
-            outCode = "hye";
-        }
-        else if( code.compareToIgnoreCase("baq") == 0 ) {
-            outCode = "eus";
-        }
-        else if( code.compareToIgnoreCase("bur") == 0 ) {
-            outCode = "mya";
-        }
-        else if( code.compareToIgnoreCase("chi") == 0 ) {
-            outCode = "zho";
-        }
-        else if( code.compareToIgnoreCase("cze") == 0 ) {
-            outCode = "ces";
-        }
-        else if( code.compareToIgnoreCase("dut") == 0 ) {
-            outCode = "nld";
-        }
-        else if( code.compareToIgnoreCase("fre") == 0 ) {
-            outCode = "fra";
-        }
-        else if( code.compareToIgnoreCase("geo") == 0 ) {
-            outCode = "kat";
-        }
-        else if( code.compareToIgnoreCase("ger") == 0 ) {
-            outCode = "deu";
-        }
-        else if( code.compareToIgnoreCase("gre") == 0 ) {
-            outCode = "ell";
-        }
-        else if( code.compareToIgnoreCase("ice") == 0 ) {
-            outCode = "isl";
-        }
-        else if( code.compareToIgnoreCase("mac") == 0 ) {
-            outCode = "mkd";
-        }
-        else if( code.compareToIgnoreCase("may") == 0 ) {
-            outCode = "msa";
-        }
-        else if( code.compareToIgnoreCase("per") == 0 ) {
-            outCode = "fas";
-        }
-        else if( code.compareToIgnoreCase("rum") == 0 ) {
-            outCode = "ron";
-        }
-        else if( code.compareToIgnoreCase("slo") == 0 ) {
-            outCode = "slk";
-        }
-        else if( code.compareToIgnoreCase("tib") == 0 ) {
-            outCode = "bod";
-        }
-        else if( code.compareToIgnoreCase("wel") == 0 ) {
-            outCode = "cym";
-        }
-        else {
-            outCode = code;
-        }
-
-        return outCode;
+        return SubtitlePolicy.languageCode(code);
     }
 
     public static HandBrakeExeParams GenerateHandbrakeParams(
@@ -698,14 +634,13 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
 
         // subtitles
         if( subtitleTracks.length > 0 ) {
-            int totalAudioVideoTracks = params.AudioTracks.size() + 1;
-            for( int x=0; x < subtitleTracks.length; x++ ) {
-                // our version of handbrake doesn't handle more than 32 tracks
-                if( totalAudioVideoTracks + x + 1 > 31 ) {
-                    break;
-                }
-
-                HBXSubtitleTrack st = subtitleTracks[x];
+            List<HBXSubtitleTrack> selectedSubtitles = SubtitlePolicy.select(
+                    java.util.Arrays.asList(subtitleTracks), params.AudioTracks.size(), track -> track.Language);
+            if (selectedSubtitles.size() < subtitleTracks.length) {
+                RKLog.Log("Subtitle track budget: keeping %d of %d tracks.", selectedSubtitles.size(), subtitleTracks.length);
+            }
+            for( int x=0; x < selectedSubtitles.size(); x++ ) {
+                HBXSubtitleTrack st = selectedSubtitles.get(x);
 
                 params.SrtFiles.add(st.Filename);
                 params.SrtCodesets.add("UTF-8");

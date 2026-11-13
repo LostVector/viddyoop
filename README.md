@@ -580,8 +580,10 @@ or deleting the replacement input. Package before this test so the jar matches
 the current source.
 
 The project targets Java 17. Java 17 verification passes on Temurin
-17.0.21+9 with coverage enabled (211 tests, 16 opt-in skips). The pinned Java 17
-ARM64 image passes all 126 core tests without skips using a 512 MiB JVM heap and
+17.0.21+9 with coverage enabled (PR #8 checkpoint: 211 tests, 16 opt-in skips).
+The follow-up track-policy changes pass 232 tests with 17 opt-in skips; a separate
+2-second native test verifies E-AC-3 payload passthrough and AAC-first ordering. At the PR #8 checkpoint, the pinned Java 17
+ARM64 image passed all 126 core tests without skips using a 512 MiB JVM heap and
 PostgreSQL as the external workflow endpoint. The earlier 119-test baseline also
 passes with a disposable macOS-shared ENOSPC filesystem.
 On JDK 27, add `-Djacoco.skip=true`: the pinned coverage agent cannot instrument
