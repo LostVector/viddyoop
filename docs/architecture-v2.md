@@ -67,7 +67,41 @@ successful tests do not establish production suitability of that server.
 | iTunes visibility | A read-only indexer parses iTunes Library.xml into SQLite (`itunes_items`), enabling dedupe and status views |
 | HandBrake | Prepared image currently pins Debian `handbrake-cli` 1.6.x. Revisit the toolchain pin against the observed HandBrake 1.11.2 HEVC/HDR/Dolby Vision outputs before claiming media compatibility |
 
-### Observed output compatibility target (2026-11-13)
+### Media migration baseline: existing code
+
+Use the current implementation as the source of encode and selection rules.
+Start with `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`,
+`GetBestAudioTrack`, `ExtractMKVSubtitles` and `GenerateHandbrakeParams`, then
+trace their parameter translation through `HBXExeHelper.ExecuteHandbrake` and
+`HandBrakeExeParams`. Include the preprocessor's DTS conversion and the configured
+primary/secondary languages. User instructions override those rules where an
+explicit change has been requested.
+
+The migration changes execution, ownership and recovery. It does not create a
+new media policy by default. Extract/reuse the applicable selection and parameter
+rules into shared code where practical; translate obsolete CLI/tool details at
+the adapter boundary. Characterize the existing behavior before replacing it,
+then compare the new flow against that baseline with the same track fixtures.
+Record each deliberate behavior change separately from a tool syntax update.
+
+| Rule | Existing authority | Current new-flow difference / migration action |
+|---|---|---|
+| Primary/secondary audio and foreign-language fallback | `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Adapter selects every track and has no language settings. Port the existing ordered selection, distinct-secondary check and first-track fallback; retain configuration |
+| AAC-first ordering, DPL2, 48 kHz, 224 kbps, DRC 2.0 | `GenerateHandbrakeParams` AAC loop; `ExecuteHandbrake` argument translation | Numeric settings/order already present. Keep them, with a supported AAC encoder for the runtime; do not replace them with estimates from output bitrates |
+| Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. New adapter directly encodes all non-AC-3 multichannel sources and forces 5.1/448/48 kHz even in passthrough argument positions; distinguish source-preserving passthrough from encoding settings |
+| E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | This is an old tool workaround, not evidence that every Dolby stream should be retained or that the old command provides a correct fallback. Adapt it to the user's stated AC-3 fallback policy and verify the emitted media |
+| Subtitle languages/defaults, extraction and repair | `ExtractMKVSubtitles`, `ISO6392CodeBibliographicToTerminology`, subtitle loop in `GenerateHandbrakeParams` | New normalizer retains language/default but lacks the legacy language-code mapping. Preserve that mapping and selection behavior; observed English/Spanish/French tracks are not an allowlist |
+| Subtitle count and unsupported formats | Legacy subtitle loop stops at 31 total tracks; extractor skips unsupported formats | Characterize these limits. New flow intentionally fails unsupported codecs for review under the accepted recovery contract; do not silently make the legacy truncation a new product requirement |
+| Audio-less sources | `EncodeOriginal` rejects inputs with no audio | New flow currently accepts silent video. This is an outstanding behavior difference; synthetic silent-video success does not prove legacy parity |
+| Video quality, frame rate, crop, scaling, chapters and TS filters | `GenerateHandbrakeParams` and `MAX_XRES`/`MAX_YRES` | Baseline is x264, RF20/22, 29.97 peak, zero crop, 1920x1080 ceiling, anamorphic handling, markers and TS decomb/detelecine. H.265 is explicitly requested; use the output survey to identify and validate further video updates, without silently redefining unrelated rules |
+
+Parity checks must cover competing primary tracks, foreign-language fallback,
+secondary duplicates, mono/stereo/surround sources, AAC-first order, passthrough
+stream identity, DTS/E-AC-3 conversion, subtitle language aliases/defaults and
+missing audio. Cover modern video changes separately. Passing orchestration and
+recovery tests does not prove these media-policy requirements.
+
+### Output survey: supporting evidence (2026-11-13)
 
 The operator now uses H.265 output. A read-only scan selected 59 library files
 using recent filesystem modification/creation times, recent TV episodes and
@@ -84,7 +118,7 @@ Their resolution retains the source's 4K detail with cropping in some cases;
 nominal rates are 23.976 or 24 fps. A filename containing "1080p" does not reliably
 identify the actual output resolution.
 
-- Preserve HDR/SDR characteristics: 36 carry BT.2020/PQ HDR10 mastering metadata,
+- Observed HDR/SDR characteristics: 36 carry BT.2020/PQ HDR10 mastering metadata,
   including 28 with Dolby Vision Profile 8 metadata; seven are BT.709 SDR.
 - Every file has default AAC-LC stereo at 48 kHz plus a non-default 5.1 track:
   E-AC-3 in 42, AC-3 in one. Twenty-five E-AC-3 tracks report Dolby Atmos.
@@ -98,15 +132,15 @@ identify the actual output resolution.
 - Nineteen files have chapter entries. All 43 place `moov` after `mdat` (no
   fast-start layout in this sample).
 
-These are compatibility requirements for the pilot, not proof that the current
-adapter implements them. It still emits the previous 1080p AVC/AAC+AC-3 profile;
-its passing recovery suite does not validate this new media target. Implement a
-versioned profile and validate dimensions, color/HDR/Dolby Vision metadata,
-the intended AAC/AC-3 track layout, subtitles and representative playback before accepting
-it. HEVC compatibility is part of migration, rather than a deferred new-codec
-extension. Named preset, exact filter/crop rules and handling of unsupported HDR
-variants still need to be made explicit; the output files do not encode a
-complete HandBrake preset.
+This survey records existing output characteristics and helps identify video
+updates to the code baseline. It is not a complete preset or an independent
+replacement specification. H.265 is an explicit migration requirement; the
+current adapter still emits 1080p AVC. Reconcile the observed 4K dimensions,
+CRF22, VBV values, crop and HDR/Dolby Vision handling with the existing video
+rules as explicit profile changes, and validate the resulting media before
+representative acceptance. Keep unaffected audio/language/subtitle rules from
+the code. Encoder SEI and media headers cannot establish every filter, fallback
+or selection decision, and passing recovery tests do not validate the profile.
 
 ### Audio and language contract (operator clarification)
 
