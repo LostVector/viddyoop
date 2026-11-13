@@ -25,6 +25,8 @@ public class IngestWatcher {
 
     private static class Sighting {
         long size;
+        java.nio.file.attribute.FileTime modified;
+        Object fileKey;
         long firstSeenStableMs;
     }
 
@@ -41,7 +43,7 @@ public class IngestWatcher {
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(inbox)) {
             for (Path path : stream) {
-                if (!Files.isRegularFile(path)) {
+                if (!Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
                     continue;
                 }
 
@@ -62,12 +64,18 @@ public class IngestWatcher {
                 }
 
                 present.add(path);
-                long size = Files.size(path);
+                var attributes = Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class,
+                        java.nio.file.LinkOption.NOFOLLOW_LINKS);
+                long size = attributes.size();
                 Sighting sighting = seen.get(path);
 
-                if (sighting == null || sighting.size != size) {
+                if (sighting == null || sighting.size != size
+                        || !attributes.lastModifiedTime().equals(sighting.modified)
+                        || !java.util.Objects.equals(attributes.fileKey(), sighting.fileKey)) {
                     sighting = new Sighting();
                     sighting.size = size;
+                    sighting.modified = attributes.lastModifiedTime();
+                    sighting.fileKey = attributes.fileKey();
                     sighting.firstSeenStableMs = nowMs;
                     seen.put(path, sighting);
                     continue;

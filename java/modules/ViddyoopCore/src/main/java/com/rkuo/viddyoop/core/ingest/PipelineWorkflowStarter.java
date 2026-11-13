@@ -6,15 +6,11 @@ import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowExecutionAlreadyStarted;
 import io.temporal.client.WorkflowOptions;
-import io.temporal.common.Priority;
 
 /**
- * Starts one VideoPipelineWorkflow per ingested file.
- *
- * The workflow id is derived from the source path, which makes ingest
- * idempotent: re-scanning the same file cannot start a second concurrent
- * pipeline (the duplicate start is swallowed). This replaces the old
- * "watched directory + rename" dedup.
+ * Starts one workflow per durable submission. A repeated start cannot restart
+ * a completed or failed submission. Re-encodes use a new catalog identity;
+ * an operator retry resets the existing failed execution at its failed activity.
  */
 public class PipelineWorkflowStarter {
 
@@ -26,19 +22,22 @@ public class PipelineWorkflowStarter {
         this.taskQueue = taskQueue;
     }
 
-    public static String workflowIdFor(String sourcePath) {
-        return "viddyoop-" + sourcePath;
+    public static String workflowIdFor(String submissionId) {
+        if (submissionId == null || submissionId.isBlank()) {
+            throw new IllegalArgumentException("submissionId is required");
+        }
+        return "viddyoop-" + submissionId;
     }
 
     /**
      * @return true if a workflow was started, false if one already exists
      */
     public boolean start(PipelineInput input) {
+        input.activityTaskQueuePrefix = taskQueue;
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setTaskQueue(taskQueue)
-                .setWorkflowId(workflowIdFor(input.sourcePath))
-                .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY)
-                .setPriority(Priority.newBuilder().setPriorityKey(input.precedence).build())
+                .setWorkflowId(workflowIdFor(input.submissionId))
+                .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE)
                 .build();
 
         try {

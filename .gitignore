@@ -8,3 +8,6 @@ out/
 *.log
 hs_err_pid*.log
 .vscode/
+
+# Local Compose media directories
+/local/

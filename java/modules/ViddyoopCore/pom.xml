@@ -15,7 +15,40 @@
   <name>ViddyoopCore</name>
   <description>Temporal workflows, activities, and ingest watcher for the viddyoop v2 pipeline</description>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions><execution><phase>package</phase><goals><goal>shade</goal></goals></execution></executions>
+        <configuration>
+          <filters><filter><artifact>*:*</artifact><excludes>
+            <exclude>META-INF/*.SF</exclude><exclude>META-INF/*.DSA</exclude><exclude>META-INF/*.RSA</exclude>
+          </excludes></filter></filters>
+          <transformers>
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+              <mainClass>com.rkuo.viddyoop.core.worker.Viddyoop</mainClass>
+            </transformer>
+          </transformers>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
   <dependencies>
+    <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><version>1.7.36</version><scope>runtime</scope></dependency>
+    <dependency><groupId>com.rkuo</groupId><artifactId>hbx-utils</artifactId></dependency>
+    <dependency>
+      <groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>4.7.6</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.temporal</groupId>
       <artifactId>temporal-sdk</artifactId>

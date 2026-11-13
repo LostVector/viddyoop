@@ -97,6 +97,17 @@ public class IngestWatcherTest {
     }
 
     @Test
+    public void testSameSizeRewriteResetsStability() throws Exception {
+        write("movie.mkv", "first");
+        watcher.scanOnce(inbox, extensions, 0, 1000);
+        write("movie.mkv", "other");
+        Files.setLastModifiedTime(inbox.resolve("movie.mkv"),
+                java.nio.file.attribute.FileTime.fromMillis(100000));
+        Assert.assertTrue(watcher.scanOnce(inbox, extensions, 2000, 1000).isEmpty());
+        Assert.assertEquals(1, watcher.scanOnce(inbox, extensions, 3000, 1000).size());
+    }
+
+    @Test
     public void testForgetStopsTracking() throws Exception {
         write("movie.mkv", "payload");
         watcher.scanOnce(inbox, extensions, 0, 1000);

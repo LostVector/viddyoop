@@ -127,6 +127,16 @@ public class SrtParserTest {
         Assert.assertNull(SrtParser.parseFileLoose(missing));
     }
 
+    @Test(timeout=2000)
+    public void testLooseSkipsInitialWhitespaceWithoutHanging() throws Exception {
+        File f = tempFolder.newFile("initial-blank.srt");
+        java.nio.file.Files.writeString(f.toPath(), "\n  \n1\n00:00:00,000 --> 00:00:01,000\nHello\n\n");
+        var entries = SrtParser.parseFileLoose(f.getAbsolutePath());
+        Assert.assertNotNull(entries);
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("Hello\n", entries.get(0).Text);
+    }
+
     @Test
     public void testWriteRoundTrip() throws Exception {
         File f = copyFixtureToTemp("srt_valid.srt");

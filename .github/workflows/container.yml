@@ -1,0 +1,107 @@
+name: Container
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: viddyoop:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: scripts/container-smoke.sh viddyoop:test
+      - run: scripts/container-smoke.sh viddyoop:test server
+      - run: scripts/container-media-matrix.sh viddyoop:test ./local/container-media-results
+      - run: scripts/container-itunes.sh viddyoop:test ./local/container-itunes-results
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: verification
+          load: true
+          tags: viddyoop:verification
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: scripts/container-recovery.sh viddyoop:test viddyoop:verification ./local/container-recovery-results
+      - run: scripts/container-recovery.sh viddyoop:test viddyoop:verification ./local/container-postgres-recovery-results server
+      - name: Verify recovery with production timeout policies
+        if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+        env:
+          VIDYOOP_RECOVERY_PRODUCTION_TIMEOUTS: "true"
+        run: scripts/container-recovery.sh viddyoop:test viddyoop:verification ./local/container-recovery-production
+      - name: Verify cold restore of Compose data
+        if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+        run: scripts/container-restore.sh viddyoop:test viddyoop:verification ./local/container-restore-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-recovery-results
+          path: |
+            local/container-recovery-results
+            local/container-recovery-production
+            local/container-restore-results
+            local/container-itunes-results
+            local/container-media-results
+            local/container-postgres-recovery-results
+          retention-days: 7
+      - run: docker save viddyoop:test viddyoop:verification -o /tmp/viddyoop-image.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-image
+          path: /tmp/viddyoop-image.tar
+          retention-days: 1
+  verify-postgres-restore:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-image
+          path: /tmp
+      - run: docker load -i /tmp/viddyoop-image.tar
+      - run: scripts/container-restore.sh viddyoop:test viddyoop:verification ./local/container-postgres-restore-results server
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-postgres-restore-results
+          path: local/container-postgres-restore-results
+          retention-days: 7
+  publish:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    needs: [verify, verify-postgres-restore]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-image
+          path: /tmp
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the verified image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          REVISION: ${{ github.sha }}
+        run: |
+          IMAGE=$(printf '%s' "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          docker load -i /tmp/viddyoop-image.tar
+          docker tag viddyoop:test "$IMAGE:sha-$REVISION"
+          docker tag viddyoop:test "$IMAGE:main"
+          docker push "$IMAGE:sha-$REVISION"
+          docker push "$IMAGE:main"
