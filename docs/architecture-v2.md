@@ -39,7 +39,10 @@ redelivery. A controlled macOS VirtioFS mount also passes pipeline smoke,
 synthetic import and guest-reboot reconciliation; native macOS reads private
 container outputs successfully. The earlier 119-test baseline passes with a
 disposable 32 MiB HFS+ volume shared from macOS for ENOSPC checks. See the recovery table below for
-scope and remaining proof.
+scope and remaining proof. A separate abrupt VM-loss trial during active encoding
+also passes with PostgreSQL automatic WAL recovery and the same workflow run,
+one verified artifact/stat, released scratch and preservation of the uncertain
+shared original. The macOS host remained running during this trial.
 
 The container trials exposed and fixed SQLite JNI extraction onto a noexec tmpfs
 and missing UID lookup for a numeric-only account. The image now has a named
@@ -481,17 +484,18 @@ separate from these PR checks.
 
 | Gate | Current evidence | Remaining proof |
 |---|---|---|
-| Intake headroom | Packaged regression on a 32 MiB filesystem reproduces the old copy-before-reservation failure. Corrected intake defers before copying when only the workflow estimate fits; all 126 tests pass with either backend on ARM64 | Remote correction checks and representative workload/storage sizing |
+| Intake headroom | Packaged regression on a 32 MiB filesystem reproduces the old copy-before-reservation failure. Corrected intake defers before copying when only the workflow estimate fits; all 126 tests pass with either backend on ARM64 | Representative workload/storage sizing |
 | Disk exhaustion in preprocessing/publication | `DiskFullRecoveryTest`: real ENOSPC on native HFS+, pinned-container tmpfs/ext4 and macOS-shared HFS+ via VirtioFS; inputs survive and retry succeeds. The fixture consumes residual blocks and truncates its filler before unlinking because sharing can retain open host handles | Representative workload/storage sizing |
 | Publication/catalog commit gap | `WorkerCrashRecoveryTest`: worker JVM dies after publication, before catalog commit; replacement reconciles one artifact/stat and cleanup. Passes in pinned ARM64 image with production heartbeat/backoff | Representative inputs and actual host mounts |
-| Worker termination during encoding | Pinned ARM64 image: real HandBrake and worker JVM killed after progress; same workflow completes under production policies. Compose restore kills the entire worker container and also passes with media on a macOS VirtioFS share | Representative inputs; PostgreSQL backend interruption |
+| Worker termination during encoding | Pinned ARM64 image: real HandBrake and worker JVM killed after progress; same workflow completes under production policies. Compose restore kills the entire worker container and also passes with media on a macOS VirtioFS share | Representative inputs |
 | Missing intermediates | Real activity test deletes normalized media, then encoding regenerates it; passes in pinned ARM64 suite | Representative host inputs |
 | Source replacements and destination conflicts | Cleanup tests preserve replacements, including a claimed race; publication rejects conflicts | Include representative real inputs in operational trial |
-| Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Guarded runtime retains namespace UUID, recovers one pending submission without duplicate registration and preserves the original; intake resumes after quarantine | Other sharing backends and live-workflow VM power-loss trial |
+| Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Guarded runtime retains namespace UUID, recovers one pending submission without duplicate registration and preserves the original; intake resumes after quarantine | Other sharing backends |
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
-| Target toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. The 125-test baseline also passes both AMD64 CI workflows | Updated remote checks and representative inputs |
+| Target toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. All 126 also pass AMD64 container CI against both backends | Representative inputs |
 | Broader codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
+| Abrupt VM loss during encoding | Forced dedicated Lima VZ guest termination while real HandBrake was active, without a post-acceptance sync or clean service stop. PostgreSQL WAL recovery and Temporal retry complete the same namespace/submission/run with one verified artifact/stat and released scratch; uncertain shared original survives and intake pauses | Representative inputs and deployment storage; physical host power loss is outside this trial |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
 | Exhausted-stage repair | Packaged CLI on real server resumes publication without another encode and cleanup without encoded intermediate, retains one stat and rejects stale run IDs; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
 | Operational Temporal persistence | PostgreSQL candidate passes encode, restart, repeat setup, all 126 core tests and guarded full-cluster cold restore. Packaged workers reject mismatched namespace UUIDs. The same core suite passes against the development backend | Upgrade lifecycle, workload sizing, representative collection and host-app trial |

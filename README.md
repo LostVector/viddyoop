@@ -266,6 +266,30 @@ twice, then checks quarantine and automatic intake resumption. Cleanup removes
 only the trial's containers, volumes and media; JSON/log evidence remains. It
 does not test a real host app or an active workflow during VM power loss.
 
+The separate `container-powerloss.sh` trial passes on the pinned ARM64 runtime
+with macOS VirtioFS. It exercises active encoding and
+PostgreSQL crash recovery. It requires a dedicated disposable Docker VM and a
+writable host share visible at the same path inside that VM:
+
+```sh
+scripts/container-powerloss.sh prepare /path/on/disposable-share/loss-trial
+# From the VM host, force-stop that isolated VM, then restart it.
+# Back inside the VM:
+scripts/container-powerloss.sh verify /path/on/disposable-share/loss-trial
+scripts/container-powerloss.sh cleanup /path/on/disposable-share/loss-trial
+```
+
+Preparation holds a real encoder after progress and records its active workflow,
+owned snapshot and namespace UUID. Harness configuration is flushed before input
+acceptance; the test does not sync or cleanly stop services before VM loss.
+Verification requires a changed guest boot ID, PostgreSQL automatic WAL recovery,
+the original submission/run/namespace, one verified artifact/stat, released
+scratch and a preserved original with new intake paused. Allow about 15 minutes
+for normal heartbeat/retry timeouts. This tests abrupt guest loss while the host
+filesystem remains available; physical host power loss and native app recovery
+have separate scope. Cleanup removes only fixture containers/volumes/media and
+the temporary password, preserving reports.
+
 V2 pipeline (in development)
 ----------------------------
 

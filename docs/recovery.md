@@ -215,6 +215,22 @@ The PostgreSQL mode passes on ARM64 with the guarded runtime, including matching
 namespace UUID, original submission/run, verified source/output, one stats row
 and released scratch reservation.
 
+## Abrupt VM loss
+
+The VM loss trial is distinct from a cold restore. In a dedicated
+disposable Docker VM with a controlled writable host share, run
+`scripts/container-powerloss.sh prepare /absolute/shared/trial`, force-stop the
+VM from its host, restart it, then run the same script with `verify` and finally
+`cleanup`. The harness gates HandBrake only on the initial guest boot, so retry
+after a new boot uses the real encoder. It requires PostgreSQL's automatic
+crash-recovery log message, unchanged namespace/submission/run identity, verified
+source/output and one stats row, released allocation and preservation of the
+uncertain original. No writer is stopped cleanly and no sync after acceptance is
+introduced. This trial passed on the pinned ARM64 runtime with a macOS VirtioFS
+share: PostgreSQL replayed WAL and the original workflow run completed after its
+production heartbeat timeout and retry backoff. It does not establish durability
+through physical host power loss.
+
 ## Reproduce the native drill
 
 Use a short disposable fixture and installed tool paths:
