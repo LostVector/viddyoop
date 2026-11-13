@@ -33,6 +33,13 @@ public class LegacyAudioPolicyTest {
         assertSame(preferred, HBXBaseWrapperLogic.GetPrimaryTrack("english", scan(foreign, stereo, preferred)));
     }
 
+    @Test public void primaryPrefersDolbySurroundOverEarlierDtsInSameLanguage() {
+        // Recent NAS inputs can contain both; preserve the code's codec preference.
+        HBXAudioTrack dts = track(1, "English", "dts", "5.1 ch");
+        HBXAudioTrack dolby = track(2, "English", "eac3", "5.1 ch");
+        assertSame(dolby, HBXBaseWrapperLogic.GetPrimaryTrack("English", scan(dts, dolby)));
+    }
+
     @Test public void foreignDolbySurroundPrecedesPrimaryLanguageStereo() {
         HBXAudioTrack stereo = track(1, "English", "aac", "2.0 ch");
         HBXAudioTrack foreign = track(2, "Japanese", "ac3", "5.1 ch");

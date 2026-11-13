@@ -101,6 +101,40 @@ stream identity, DTS/E-AC-3 conversion, subtitle language aliases/defaults and
 missing audio. Cover modern video changes separately. Passing orchestration and
 recovery tests does not prove these media-policy requirements.
 
+### NAS-first parameter comparison
+
+Before long representative encodes, enumerate recent NAS inputs by modification
+time and generate an encode plan from each source's actual tracks/metadata using
+the existing selection and parameter rules. Compare that plan with a reliably
+matched existing iTunes output. Record video codec/profile/bit depth, dimensions,
+frame rate, HDR metadata, recoverable encoder settings, ordered audio codecs/
+languages/defaults, subtitles and chapters. A unique filename plus compatible
+duration is useful matching evidence; keep renamed, ambiguous and unmatched
+files separate. This is parameter validation, not a bitwise equality or visual
+quality claim. AAC nominal bitrate and DRC are set from code; average output
+bitrate does not establish those settings.
+
+The initial read-only audit starts with the 15 newest NAS inputs: eight have
+unique filename-matched outputs with duration agreement within 20 ms. Plans
+execute `AudioTrackSelection.select` and the original
+`HBXBaseWrapperLogic.GenerateHandbrakeParams` against normalized probe metadata;
+they do not reproduce those rules in a separate planner. All eight agree on
+AAC-first audio and selected language order. All eight observed surround tracks
+are E-AC-3 while the legacy generator requests its `copy:ac3` workaround. Five
+pairs have different subtitle inventories; seven retain the input dimensions
+and one is cropped. These are explicit comparison differences, not silently
+accepted matches. The operator has been asked to settle Dolby passthrough and
+subtitle selection policy against these concrete targets.
+
+The seven newer inputs have no reliable current-profile output match in the
+scanned libraries. A renamed, older 1080p/Japanese-only title candidate remains
+separate. Recent inputs exercise duplicate English tracks, DTS-HD plus E-AC-3,
+and English/Japanese audio; the DTS/E-AC-3 source case now has a selector
+regression test. Five recent MP4 inputs contain embedded text subtitles, which
+the legacy MKV-only extraction path would omit. Include this container difference
+in the adaptation checklist before running their full encodes. No representative
+encode was performed by this audit.
+
 ### Output survey: supporting evidence (2026-11-13)
 
 The operator now uses H.265 output. A read-only scan selected 59 library files
