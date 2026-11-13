@@ -124,7 +124,7 @@ required={'WorkerCrashRecoveryTest'}
 if sys.argv[2]!='true':
     required|={'ColdRestoreTest','DiskFullRecoveryTest','RunnablePipelineTest',
                'RetryCommandIntegrationTest','ItunesImportDaemonTest','ItunesIndexScheduleTest',
-               'NamespaceBindingIntegrationTest','TemporalCatalogBindingTest'}
+               'NamespaceBindingIntegrationTest','TemporalCatalogBindingTest','IntakeCapacityIntegrationTest'}
 assert required<=seen, ('Recovery gates missing',required-seen)
 print('Pinned-container recovery results:',counts,'production timeouts:',sys.argv[2])
 PY

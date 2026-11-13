@@ -140,13 +140,15 @@ public final class Viddyoop implements Runnable {
                                 if (previous != null && version.equals(previous.version())
                                         && Files.isRegularFile(previous.snapshot(), LinkOption.NOFOLLOW_LINKS)) continue;
                                 long usable = Files.getFileStore(work).getUsableSpace();
-                                if (ScratchReservations.estimate(attrs.size(), scratchMultiplier) > reservations.available(usable, minFreeBytes)) {
+                                long intakeBytes = Math.addExact(attrs.size(), ScratchReservations.estimate(attrs.size(), scratchMultiplier));
+                                if (intakeBytes > reservations.available(usable, minFreeBytes)) {
                                     System.err.println("Deferring input: insufficient scratch capacity: " + source);
                                     continue;
                                 }
                                 String name = com.rkuo.viddyoop.core.policy.LibraryNames.outputName(source);
                                 var input = coordinator.accept(source, "apple-tv-v1", "discovery", library.resolve(name), 0, archivePolicy, archivePolicy.equals("none") ? null : archive);
                                 accepted.put(source, new Accepted(version, Path.of(input.stagedSourcePath)));
+                                dispatcher.dispatchPending();
                             } catch (InterruptedException e) { throw e; }
                             catch (Exception e) { System.err.println("Ingest failed for " + source + ": " + e); }
                         }

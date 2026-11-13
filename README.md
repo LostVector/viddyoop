@@ -133,7 +133,7 @@ pinned by registry digest, with explicit schema/namespace jobs and the same
 pipeline image. The check also
 restarts PostgreSQL, Temporal and the worker, then reruns setup jobs against the
 populated database and compares submission, run and artifact identities. This
-candidate also passes the full 125-test core suite with PostgreSQL as its external
+candidate also passes the full 126-test core suite with PostgreSQL as its external
 workflow endpoint, including worker interruption and failed-stage repair. Use
 the explicit `server` mode for its database-backup/restore drill. A direct launch requires
 `VIDYOOP_POSTGRES_PASSWORD_FILE`; no production password is provided in the repo.
@@ -230,9 +230,9 @@ the Docker VM to reproduce that storage boundary.
 The smoke script uses disposable directories, volumes, a unique Compose project,
 and random loopback host ports, then removes those test resources. The optional
 iTunes index and import services are prepared behind separate opt-in profiles.
-The base smoke, full 125-test core suite, production-timeout crash cases, six-root
+The base smoke, full 126-test core suite, production-timeout crash cases, six-root
 Compose restore, and synthetic optional profile pass on Linux ARM64. The latest
-125-test suite passes with either backend; the earlier 119-test baseline also passes with
+126-test suite passes with either backend; the earlier 119-test baseline also passes with
 its ENOSPC filesystem shared from macOS. Check the
 optional profile separately with:
 
@@ -297,6 +297,10 @@ settle interval, five-second polling, and a 10 GiB scratch-space reserve.
 Each submission also reserves an estimated four times its source size before
 workflow start. Reservations survive restarts and are released atomically with
 successful publication; failed jobs keep their allocation for retry or review.
+Before copying an inbox file, admission also accounts for the snapshot itself:
+the default check needs five source sizes plus the free-space floor and existing
+allocations. The worker attempts reservation/dispatch after each accepted input,
+before copying the next file; successful reservations reduce later intake capacity.
 New estimates use `--scratch-multiplier`; existing allocations retain their
 original size. Available-space checks subtract outstanding allocations from
 filesystem free space, so estimates are conservative while files are being
@@ -551,9 +555,9 @@ The replacement's conflicting output fails without altering the first artifact
 or deleting the replacement input. Package before this test so the jar matches
 the current source.
 
-The project targets Java 17. Full-repository verification passes on Temurin
-17.0.21+9 with coverage enabled (210 tests, 15 opt-in skips). The pinned Java 17
-ARM64 image passes all 125 core tests without skips using a 512 MiB JVM heap and
+The project targets Java 17. Java 17 verification passes on Temurin
+17.0.21+9 with coverage enabled (211 tests, 16 opt-in skips). The pinned Java 17
+ARM64 image passes all 126 core tests without skips using a 512 MiB JVM heap and
 PostgreSQL as the external workflow endpoint. The earlier 119-test baseline also
 passes with a disposable macOS-shared ENOSPC filesystem.
 On JDK 27, add `-Djacoco.skip=true`: the pinned coverage agent cannot instrument

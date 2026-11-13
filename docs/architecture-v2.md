@@ -27,7 +27,7 @@ iTunes import use the same catalog, without editing the host export or removing
 authoritative library files. Ambiguous handoffs are observed without resending.
 
 The digest-pinned Debian image and Compose smoke pass on rootless Docker 29.9.3 /
-Compose 5.7.1 in a disposable Linux ARM64 VM. All 125 core tests pass there on
+Compose 5.7.1 in a disposable Linux ARM64 VM. All 126 core tests pass there on
 Java 17 with coverage, including real media, worker replacement, failed-stage
 repair, synthetic import, and cold filesystem restore. Separate crash cases also
 pass with production heartbeat/backoff policies. The actual Compose worker
@@ -109,6 +109,9 @@ inbox ──▶ pipeline worker ──▶ library/ ──▶ itunes-import ─�
      (`VIDYOOP_ENCODE_WORKERS`); preprocessing has a separate limit.
      Admission also checks scratch-space capacity; CPU limits alone are
      insufficient when remuxes and encodes overlap.
+     Before staging, include the snapshot's bytes as well as the workflow
+     reservation estimate. Attempt reservation/dispatch after each accepted
+     input so later batch checks account for those allocations.
   4. *Publish activity*: validate and commit output into `library/`, record
      the artifact and stats idempotently, then perform retry-safe source
      cleanup. The library is authoritative; iTunes delivery is optional.
@@ -324,7 +327,7 @@ Its ARM64 smoke passes a real encode, restarts PostgreSQL/Temporal/the worker,
 reruns schema and namespace setup against populated persistence and verifies
 unchanged submission, workflow-run and artifact identities. CI includes this
 candidate smoke alongside the development stack checks.
-All 125 core tests pass without skips with PostgreSQL as the external
+All 126 core tests pass without skips with PostgreSQL as the external
 workflow endpoint, including worker interruption, publication reconciliation,
 failed-stage repair and packaged CLI checks. The self-contained SQLite restore
 test is not used as PostgreSQL backup evidence. The matching cluster-restore
@@ -468,12 +471,17 @@ including importer restart and observed rejection. CI runs the full suite and
 profile on pull requests, adding production-timeout and volume-restore checks on
 default-branch pushes before GHCR publication. These checks pass locally on ARM64;
 remote CI is tracked in [PR #8 checks](https://github.com/LostVector/viddyoop/pull/8/checks).
-The native AMD64 build passes; default-branch publication gates remain separate.
+The 125-test baseline passes native and container AMD64 CI, including both
+backends and generated media/import cases. The subsequent intake correction
+passes 126 tests on ARM64 with either backend; its remote checks are tracked on
+the draft. Default-branch production-timeout/restore and publication gates remain
+separate from these PR checks.
 
 ## Recovery verification status
 
 | Gate | Current evidence | Remaining proof |
 |---|---|---|
+| Intake headroom | Packaged regression on a 32 MiB filesystem reproduces the old copy-before-reservation failure. Corrected intake defers before copying when only the workflow estimate fits; all 126 tests pass with either backend on ARM64 | Remote correction checks and representative workload/storage sizing |
 | Disk exhaustion in preprocessing/publication | `DiskFullRecoveryTest`: real ENOSPC on native HFS+, pinned-container tmpfs/ext4 and macOS-shared HFS+ via VirtioFS; inputs survive and retry succeeds. The fixture consumes residual blocks and truncates its filler before unlinking because sharing can retain open host handles | Representative workload/storage sizing |
 | Publication/catalog commit gap | `WorkerCrashRecoveryTest`: worker JVM dies after publication, before catalog commit; replacement reconciles one artifact/stat and cleanup. Passes in pinned ARM64 image with production heartbeat/backoff | Representative inputs and actual host mounts |
 | Worker termination during encoding | Pinned ARM64 image: real HandBrake and worker JVM killed after progress; same workflow completes under production policies. Compose restore kills the entire worker container and also passes with media on a macOS VirtioFS share | Representative inputs; PostgreSQL backend interruption |
@@ -481,12 +489,12 @@ The native AMD64 build passes; default-branch publication gates remain separate.
 | Source replacements and destination conflicts | Cleanup tests preserve replacements, including a claimed race; publication rejects conflicts | Include representative real inputs in operational trial |
 | Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Guarded runtime retains namespace UUID, recovers one pending submission without duplicate registration and preserves the original; intake resumes after quarantine | Other sharing backends and live-workflow VM power-loss trial |
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
-| Target toolchain | All 125 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. Native AMD64 CI passes; container checks are tracked on PR #8 | Remote container CI result and representative inputs |
+| Target toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. The 125-test baseline also passes both AMD64 CI workflows | Updated remote checks and representative inputs |
 | Broader codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
 | Exhausted-stage repair | Packaged CLI on real server resumes publication without another encode and cleanup without encoded intermediate, retains one stat and rejects stale run IDs; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
-| Operational Temporal persistence | PostgreSQL candidate passes encode, restart, repeat setup, all 125 core tests and guarded full-cluster cold restore. Packaged workers reject mismatched namespace UUIDs. The same core suite passes against the development backend | Upgrade lifecycle, workload sizing, representative collection and host-app trial |
+| Operational Temporal persistence | PostgreSQL candidate passes encode, restart, repeat setup, all 126 core tests and guarded full-cluster cold restore. Packaged workers reject mismatched namespace UUIDs. The same core suite passes against the development backend | Upgrade lifecycle, workload sizing, representative collection and host-app trial |
 
 The crash tests use a real Temporal dev server. The socket-bound Java test server
 retried activities but left a follow-up workflow task undelivered after abrupt
