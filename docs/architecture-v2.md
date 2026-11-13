@@ -86,7 +86,7 @@ Record each deliberate behavior change separately from a tool syntax update.
 
 | Rule | Existing authority | Current new-flow difference / migration action |
 |---|---|---|
-| Primary/secondary audio and foreign-language fallback | `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Adapter selects every track and has no language settings. Port the existing ordered selection, distinct-secondary check and first-track fallback; retain configuration |
+| Primary/secondary audio and foreign-language fallback | `AudioTrackSelection` in HBXUtils, extracted from `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Shared selection now drives the legacy wrapper and has characterization tests. Adapter still selects every track and has no language settings; connect it to this helper through modern scan-language normalization and retained configuration |
 | AAC-first ordering, DPL2, 48 kHz, 224 kbps, DRC 2.0 | `GenerateHandbrakeParams` AAC loop; `ExecuteHandbrake` argument translation | Numeric settings/order already present. Keep them, with a supported AAC encoder for the runtime; do not replace them with estimates from output bitrates |
 | Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. New adapter directly encodes all non-AC-3 multichannel sources and forces 5.1/448/48 kHz even in passthrough argument positions; distinguish source-preserving passthrough from encoding settings |
 | E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | This is an old tool workaround, not evidence that every Dolby stream should be retained or that the old command provides a correct fallback. Adapt it to the user's stated AC-3 fallback policy and verify the emitted media |
@@ -157,8 +157,8 @@ supersedes recommendations inferred from the sampled files:
   not add a redundant surround track. E-AC-3/Atmos passthrough is observed in
   recent files but is not a replacement for this explicitly requested AC-3
   compatibility track.
-- Port the selection behavior from
-  `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
+- Reuse `HBXUtils/.../AudioTrackSelection.java`, extracted from the selection
+  behavior in `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
   or using the sampled subtitle languages as an audio allowlist. Sample
   configuration uses English primary / Japanese secondary; retain configurable
   languages and normalize their full-name/ISO representations for modern scans.

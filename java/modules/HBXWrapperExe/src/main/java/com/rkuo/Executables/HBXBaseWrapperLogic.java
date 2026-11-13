@@ -244,8 +244,6 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
         HBXEncodingStats            hbxes;
         HBXScanParams               hbxsp;
         HBXSubtitleTrack[] subtitleTracks;
-        HBXAudioTrack               trackPrimary;
-        HBXAudioTrack               trackJapanese;
 
         IHandBrakeExeCallback callback = GetHandBrakeCallback();            // we have to ping this every 10 minutes or the job will die!
         boolean isMkv = false;
@@ -268,29 +266,7 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
             return null;
         }
 
-        trackPrimary = GetPrimaryTrack( state.PrimaryLanguage, hbxspIn );
-        if( trackPrimary != null ) {
-            aAudioTracks.add( trackPrimary );
-        }
-
-        // for anime, we want to add the original japanese track on top of the english one
-        trackJapanese = GetBestAudioTrack( state.SecondaryLanguage, hbxspIn );
-        if( trackJapanese != null ) {
-            if( trackPrimary == null ) {
-                aAudioTracks.add( trackJapanese );
-            }
-            else {
-                // If the japanese track = primary track, don't add it again.
-                if( trackJapanese.TrackNumber.equals(trackPrimary.TrackNumber) == false ) {
-                    aAudioTracks.add( trackJapanese );
-                }
-            }
-        }
-
-        // if we didn't find any preferred audio tracks to encode, just use the first one
-        if( aAudioTracks.size() == 0 ) {
-            aAudioTracks.add( hbxspIn.AudioTracks.get(0) );
-        }
+        aAudioTracks = AudioTrackSelection.select(state.PrimaryLanguage, state.SecondaryLanguage, hbxspIn);
 
         // If this is a MKV, extract the subtitles and clean them up
         if( isMkv == true ) {
@@ -415,84 +391,11 @@ public abstract class HBXBaseWrapperLogic implements IHBXExecutor {
     }
 
     protected static HBXAudioTrack GetPrimaryTrack( String language, HBXScanParams hbxsp ) {
-
-        // look for first english ac3 5.1 track
-        RKLog.Log( "Looking for a %s AC3 5.x track.", language );
-        for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0 ) {
-                    if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
-                        RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                        return at;
-                    }
-
-                    if( at.SurroundNotation.toLowerCase().contains("5.0") == true ) {
-                        RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                        return at;
-                    }
-                }
-            }
-        }
-
-        // otherwise, look for the first 5.1 track
-        RKLog.Log( "Looking for any AC3 5.x track." );
-        for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0 ) {
-                if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
-                    RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                    return at;
-                }
-
-                if( at.SurroundNotation.toLowerCase().contains("5.0") == true ) {
-                    RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                    return at;
-                }
-            }
-        }
-
-        // otherwise, just look for any english track
-        RKLog.Log( "Looking for any %s track.", language );
-        for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                return at;
-            }
-        }
-
-        return null;
+        return AudioTrackSelection.primary(language, hbxsp);
     }
 
-    /*
-    This will find the best specified language track.  Right now, used for anime.
-     */
     protected static HBXAudioTrack GetBestAudioTrack( String language, HBXScanParams hbxsp ) {
-
-        // look for the first ac3 5.1 track in the specified language
-        for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                if( at.Codec.compareToIgnoreCase("ac3") == 0 || at.Codec.compareToIgnoreCase("eac3") == 0  ) {
-                    if( at.SurroundNotation.toLowerCase().contains("5.1") == true ) {
-                        RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                        return at;
-                    }
-
-                    if( at.SurroundNotation.toLowerCase().contains("5.0") == true ) {
-                        RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                        return at;
-                    }
-                }
-            }
-        }
-
-        // otherwise, just look for the first track in the specified language
-        for( HBXAudioTrack at : hbxsp.AudioTracks ) {
-            if( at.Language.compareToIgnoreCase(language) == 0 ) {
-                RKLog.Log( "Using audio track %d. (%s, %s, %s).", at.TrackNumber, at.Language, at.Codec, at.SurroundNotation );
-                return at;
-            }
-        }
-
-        return null;
+        return AudioTrackSelection.secondary(language, hbxsp);
     }
 
     /*
