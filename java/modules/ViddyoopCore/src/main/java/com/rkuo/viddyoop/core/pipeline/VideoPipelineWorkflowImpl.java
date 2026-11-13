@@ -36,26 +36,35 @@ public class VideoPipelineWorkflowImpl implements VideoPipelineWorkflow {
             .setMaximumAttempts(2)
             .build();
 
+    private String queue(PipelineInput input, String stage) {
+        return input.activityTaskQueuePrefix == null ? Workflow.getInfo().getTaskQueue()
+                : input.activityTaskQueuePrefix + "-" + stage;
+    }
+
+    protected ActivityOptions encodeOptions(PipelineInput input) {
+        return ActivityOptions.newBuilder().setTaskQueue(queue(input, "encode"))
+                .setStartToCloseTimeout(Duration.ofHours(24)).setHeartbeatTimeout(Duration.ofMinutes(10))
+                .setRetryOptions(ENCODE_RETRY).build();
+    }
+
+    protected ActivityOptions publishOptions(PipelineInput input) {
+        return ActivityOptions.newBuilder().setTaskQueue(queue(input, "publish"))
+                .setStartToCloseTimeout(Duration.ofMinutes(30)).setHeartbeatTimeout(Duration.ofMinutes(2))
+                .setRetryOptions(STAGE_RETRY).build();
+    }
+
     @Override
     public PipelineResult run(PipelineInput input) {
         PreprocessActivity preprocess = Workflow.newActivityStub(PreprocessActivity.class,
                 ActivityOptions.newBuilder()
+                        .setTaskQueue(queue(input, "preprocess"))
                         .setStartToCloseTimeout(Duration.ofMinutes(30))
+                        .setHeartbeatTimeout(Duration.ofMinutes(2))
                         .setRetryOptions(STAGE_RETRY)
                         .build());
 
-        EncodeActivity encode = Workflow.newActivityStub(EncodeActivity.class,
-                ActivityOptions.newBuilder()
-                        .setStartToCloseTimeout(Duration.ofHours(24))
-                        .setHeartbeatTimeout(Duration.ofMinutes(10))
-                        .setRetryOptions(ENCODE_RETRY)
-                        .build());
-
-        PublishActivity publish = Workflow.newActivityStub(PublishActivity.class,
-                ActivityOptions.newBuilder()
-                        .setStartToCloseTimeout(Duration.ofMinutes(10))
-                        .setRetryOptions(STAGE_RETRY)
-                        .build());
+        EncodeActivity encode = Workflow.newActivityStub(EncodeActivity.class, encodeOptions(input));
+        PublishActivity publish = Workflow.newActivityStub(PublishActivity.class, publishOptions(input));
 
         PreprocessResult pre = preprocess.preprocess(input);
         EncodeResult enc = encode.encode(input, pre);

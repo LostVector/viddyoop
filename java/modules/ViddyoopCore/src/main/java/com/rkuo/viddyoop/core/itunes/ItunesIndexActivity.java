@@ -1,0 +1,8 @@
+package com.rkuo.viddyoop.core.itunes;
+
+import io.temporal.activity.*;
+
+@ActivityInterface
+public interface ItunesIndexActivity {
+    @ActivityMethod ItunesIndexer.Result index();
+}

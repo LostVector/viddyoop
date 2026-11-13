@@ -1,0 +1,118 @@
+# Candidate operational backend. Separate project/data from the development stack.
+services:
+  postgres:
+    image: postgres:16-bookworm@sha256:a49f7438ba03589f9b1ca062f2da82e899b48ea1dc50d2449fa09a70be83ebca
+    cpus: ${VIDYOOP_POSTGRES_CPUS:-0.5}
+    mem_limit: ${VIDYOOP_POSTGRES_MEMORY:-512m}
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+    secrets: [postgres-password]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/server/init-databases.sql:/docker-entrypoint-initdb.d/viddyoop.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U temporal -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  temporal-schema:
+    image: &admin-image temporalio/admin-tools:1.32.2@sha256:4a95866efba29d7e17ab012df5232795e8b0ad0f7d5f9d1ec4df321f7792a754
+    cpus: 0.5
+    mem_limit: 256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets: [postgres-password]
+    volumes:
+      - ./scripts/server:/checks:ro
+    entrypoint: [sh, /checks/schema.sh]
+    read_only: true
+    tmpfs: ["/tmp:size=16777216,mode=1777"]
+
+  temporal:
+    image: temporalio/server:1.32.2@sha256:7bf69188a6232fea14869b9cef3d94aa82a1601d99517f7e86c71f22da4e0670
+    cpus: ${VIDYOOP_TEMPORAL_CPUS:-1.0}
+    mem_limit: ${VIDYOOP_TEMPORAL_MEMORY:-1g}
+    depends_on:
+      temporal-schema:
+        condition: service_completed_successfully
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_SEEDS: postgres
+      BIND_ON_IP: 0.0.0.0
+      NUM_HISTORY_SHARDS: "4"
+      SQL_MAX_CONNS: "10"
+      SQL_MAX_IDLE_CONNS: "10"
+      SQL_VIS_MAX_CONNS: "5"
+      SQL_VIS_MAX_IDLE_CONNS: "5"
+      TEMPORAL_ALLOW_NO_AUTH: "true"
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
+    secrets: [postgres-password]
+    volumes:
+      - ./scripts/server/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
+    entrypoint: [sh, -ec, 'export POSTGRES_PWD="$$(cat /run/secrets/postgres-password)"; exec /etc/temporal/entrypoint.sh']
+    ports:
+      - "127.0.0.1:${VIDYOOP_TEMPORAL_PORT:-7233}:7233"
+    healthcheck:
+      test: [CMD, nc, -z, 127.0.0.1, "7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    read_only: true
+    tmpfs: ["/tmp:size=16777216,mode=1777"]
+    restart: unless-stopped
+
+  temporal-namespace:
+    image: *admin-image
+    cpus: 0.5
+    mem_limit: 256m
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
+      VIDYOOP_HISTORY_RETENTION: ${VIDYOOP_HISTORY_RETENTION:-30d}
+    volumes:
+      - ./scripts/server:/checks:ro
+    entrypoint: [sh, /checks/namespace.sh]
+    read_only: true
+    tmpfs: ["/tmp:size=16777216,mode=1777"]
+
+  pipeline:
+    extends:
+      file: docker-compose.yml
+      service: pipeline
+    depends_on:
+      temporal-namespace:
+        condition: service_completed_successfully
+
+  itunes-index:
+    extends:
+      file: docker-compose.yml
+      service: itunes-index
+    depends_on:
+      temporal-namespace:
+        condition: service_completed_successfully
+
+  itunes-import:
+    extends:
+      file: docker-compose.yml
+      service: itunes-import
+    depends_on:
+      temporal-namespace:
+        condition: service_completed_successfully
+
+secrets:
+  postgres-password:
+    file: ${VIDYOOP_POSTGRES_PASSWORD_FILE:?Set VIDYOOP_POSTGRES_PASSWORD_FILE to a private password file}
+
+volumes:
+  postgres-data:
+  work-data:
+  catalog-data:

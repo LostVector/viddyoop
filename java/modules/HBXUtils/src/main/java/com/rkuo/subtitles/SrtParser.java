@@ -103,7 +103,8 @@ public class SrtParser {
                     break;
                 }
 
-                if (numberString.length() == 0) {
+                if (numberString.trim().length() == 0) {
+                    numberString = r.readLine();
                     continue;
                 }
 

@@ -1,37 +1,141 @@
-# Local development stack for viddyoop v2.
-#
-# The Temporal dev server is a single self-contained process (embedded
-# SQLite persistence via --db-filename, built-in Web UI). For a single
-# machine this is a legitimate deployment; it is not an HA setup.
-#
-#   docker compose up -d
-#   Web UI: http://localhost:8233
-#   gRPC:   localhost:7233
-#
-# The pipeline worker runs from the repo (step8 adds the packaged service):
-#   java -jar java/modules/ViddyoopCore/target/...  (worker main lands in step8)
-
+# Local single-node deployment. iTunes indexing/import are separate opt-in profiles.
 services:
   temporal:
-    image: temporalio/temporal:latest
+    cpus: ${VIDYOOP_TEMPORAL_CPUS:-1.0}
+    mem_limit: ${VIDYOOP_TEMPORAL_MEMORY:-1g}
+    image: temporalio/temporal:1.10.0@sha256:003508da05989e7cf0d583cfce521c4bb2732e733574e3040db8f1284783baa2
     entrypoint: ["temporal"]
-    command:
-      - "server"
-      - "start-dev"
-      - "--ip"
-      - "0.0.0.0"
-      - "--db-filename"
-      - "/var/lib/temporal/temporal.db"
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
     ports:
-      - "7233:7233"   # gRPC
-      - "8233:8233"   # Web UI
+      - "127.0.0.1:${VIDYOOP_TEMPORAL_PORT:-7233}:7233"
+      - "127.0.0.1:${VIDYOOP_TEMPORAL_UI_PORT:-8233}:8233"
     volumes:
-      - temporal-data:/var/lib/temporal
+      - temporal-data:/home/temporal
     healthcheck:
       test: ["CMD", "temporal", "workflow", "list", "--limit", "1"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  pipeline:
+    cpus: ${VIDYOOP_PIPELINE_CPUS:-2.0}
+    mem_limit: ${VIDYOOP_PIPELINE_MEMORY:-4g}
+    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    build: .
+    init: true
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: ${VIDYOOP_PIPELINE_JAVA_OPTIONS:--Xmx512m}
+      VIDYOOP_TEMPORAL: temporal:7233
+      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
+      VIDYOOP_ENCODE_WORKERS: ${VIDYOOP_ENCODE_WORKERS:-1}
+      VIDYOOP_PREPROCESS_WORKERS: ${VIDYOOP_PREPROCESS_WORKERS:-1}
+      VIDYOOP_PUBLISH_WORKERS: ${VIDYOOP_PUBLISH_WORKERS:-1}
+      VIDYOOP_MIN_FREE_BYTES: ${VIDYOOP_MIN_FREE_BYTES:-10737418240}
+      VIDYOOP_SETTLE_MS: ${VIDYOOP_SETTLE_MS:-60000}
+      VIDYOOP_POLL_MS: ${VIDYOOP_POLL_MS:-5000}
+      VIDYOOP_SCRATCH_MULTIPLIER: ${VIDYOOP_SCRATCH_MULTIPLIER:-4}
+      VIDYOOP_ARCHIVE_POLICY: ${VIDYOOP_ARCHIVE_POLICY:-movies}
+    volumes:
+      - ${VIDYOOP_INBOX_DIR:-./local/inbox}:/inbox
+      - work-data:/work
+      - ${VIDYOOP_LIBRARY_DIR:-./local/library}:/library
+      - ${VIDYOOP_ARCHIVE_DIR:-./local/archive}:/archive
+      - catalog-data:/db
+    read_only: true
+    tmpfs:
+      - /tmp:exec,size=67108864,mode=1777
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  itunes-index:
+    cpus: ${VIDYOOP_ITUNES_INDEX_CPUS:-0.5}
+    mem_limit: ${VIDYOOP_ITUNES_INDEX_MEMORY:-512m}
+    profiles: [itunes, itunes-import]
+    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    build: .
+    command: ["itunes-index", "--serve", "--interval-minutes", "${VIDYOOP_ITUNES_INDEX_INTERVAL_MINUTES:-15}"]
+    init: true
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: ${VIDYOOP_ITUNES_INDEX_JAVA_OPTIONS:--Xmx128m}
+      VIDYOOP_TEMPORAL: temporal:7233
+      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
+      VIDYOOP_ITUNES_XML: /itunes-lib/${VIDYOOP_ITUNES_XML_NAME:-iTunes Library.xml}
+    volumes:
+      - catalog-data:/db
+      - type: bind
+        source: ${VIDYOOP_ITUNES_LIBRARY_DIR:-./local/itunes}
+        target: /itunes-lib
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:exec,size=67108864,mode=1777
+    # Pipeline heartbeat is specific to the pipeline process, not this schedule worker.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  itunes-import:
+    cpus: ${VIDYOOP_ITUNES_IMPORT_CPUS:-0.5}
+    mem_limit: ${VIDYOOP_ITUNES_IMPORT_MEMORY:-1g}
+    profiles: [itunes-import]
+    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    build: .
+    command: ["itunes-import", "--serve", "--reconcile-only=${VIDYOOP_ITUNES_RECONCILE_ONLY:-false}"]
+    init: true
+    depends_on:
+      temporal:
+        condition: service_healthy
+      pipeline:
+        condition: service_healthy
+      itunes-index:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: ${VIDYOOP_ITUNES_IMPORT_JAVA_OPTIONS:--Xmx256m}
+      VIDYOOP_TEMPORAL: temporal:7233
+      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
+      VIDYOOP_ITUNES_ADD: /itunes-delivery/${VIDYOOP_ITUNES_ADD_NAME:-Automatically Add to iTunes.localized}
+      VIDYOOP_ITUNES_STAGING: /itunes-delivery/.viddyoop-staging
+      VIDYOOP_ITUNES_HOST_MEDIA_ROOT: ${VIDYOOP_ITUNES_HOST_MEDIA_ROOT:-}
+      VIDYOOP_ITUNES_MEDIA_ROOT: /itunes-media
+      VIDYOOP_ITUNES_REJECTED: ${VIDYOOP_ITUNES_REJECTED:-}
+      VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS: ${VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS:-60}
+      VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS: ${VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS:-10}
+    volumes:
+      - catalog-data:/db
+      - type: bind
+        source: ${VIDYOOP_LIBRARY_DIR:-./local/library}
+        target: /library
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${VIDYOOP_ITUNES_DELIVERY_DIR:-./local/itunes-delivery}
+        target: /itunes-delivery
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${VIDYOOP_ITUNES_MEDIA_DIR:-./local/itunes-media}
+        target: /itunes-media
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:exec,size=67108864,mode=1777
+    healthcheck:
+      disable: true
+    restart: unless-stopped
 
 volumes:
   temporal-data:
+  work-data:
+  catalog-data:

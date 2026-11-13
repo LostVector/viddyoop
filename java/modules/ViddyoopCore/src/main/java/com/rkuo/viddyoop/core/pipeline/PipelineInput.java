@@ -5,14 +5,25 @@ package com.rkuo.viddyoop.core.pipeline;
  * JSON by the Temporal SDK across activity boundaries.
  */
 public class PipelineInput {
-    /** Original video file as staged by the ingest watcher. */
+    /** Durable catalog identity; independent of pathname and Temporal history. */
+    public String submissionId;
+    public String sourceFingerprint;
+    public String sourceGeneration;
+    /** Snapshot owned by ingest; preprocessing must never modify it in place. */
+    public String stagedSourcePath;
+    public String encodeProfile;
+    public String archivePolicy;
+    public String archiveRoot;
+    /** Null preserves the skeleton single-queue execution for existing histories. */
+    public String activityTaskQueuePrefix;
+
+    /** Original inbox path for display and guarded cleanup; process stagedSourcePath. */
     public String sourcePath;
     /** Desired final library path for the finished encode. */
     public String finalPath;
     /**
-     * Temporal task queue priority key (higher runs first when the queue is
-     * backed up; 0 uses the default). Replaces the old "-p1" filename
-     * convention.
+     * Reserved priority metadata. Submission priority is deferred until pinned
+     * server/SDK ordering semantics have been verified.
      */
     public int precedence;
 
