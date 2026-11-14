@@ -49,14 +49,26 @@ To build:
 Container deployment (ARM64 smoke verified)
 ------------------------------------------
 
-The Dockerfile targets Debian Bookworm with HandBrake 1.6.1, MKVToolNix 74,
-FFmpeg 5.1.9, and Java 17. Base images and Temporal CLI 1.10.0 are pinned by
-registry digest; media package versions are explicit build arguments. Java and
+The Dockerfile targets Debian Bookworm with HandBrake 1.11.2, MKVToolNix 74,
+FFmpeg 5.1.9, and Java 17. HandBrake is built from the official release archive
+with a pinned SHA-256, Dolby Vision support, and two pinned upstream
+motion-metric memory fixes (see [backport notes](scripts/patches/README.md)). Base images and Temporal CLI
+1.10.0 are pinned by registry digest; media versions are explicit build arguments. Java and
 transitive system packages use Bookworm's maintained repositories. The image
 builds only the new core jar and runs as UID/GID 1000. The image build and Compose
 smoke test pass in a disposable Linux ARM64 VM using rootless Docker 29.9.3 and
 Compose 5.7.1. Container recovery and synthetic-profile checks are described below;
 actual host integration and representative movies remain release gates.
+
+New submissions default to `apple-tv-hevc-v1`: Main10, slow, RF22 above 720p
+(RF20 otherwise), Level 5.0 High Tier, explicit 60 Mbps / 60 Mbit VBV,
+same-as-source color range, and a 3840x2160 ceiling. It reuses the legacy
+English/Japanese audio selection, emits AAC stereo before surround, and retains
+all supported text subtitle languages within the 31-total-track limit, prioritizing
+English/Spanish/French. Embedded MP4 text subtitles are extracted as well as MKV
+text subtitles. Audio-less inputs and unsupported subtitle codecs require review.
+`VIDYOOP_PROFILE=apple-tv-v1` keeps the earlier AVC profile available for existing
+submissions; profile identity is persisted with each submission.
 
 With Docker Compose available and the host directories writable by UID 1000:
 
@@ -96,7 +108,7 @@ limits, Docker VM memory, and host headroom together; limits are ceilings rather
 than reservations. Scratch-space admission remains a separate filesystem check.
 
 The Container CI workflow builds and runs `scripts/container-smoke.sh`, checking
-HandBrake 1.6, real ingest/remux/encode/publication/cleanup, AAC/AC3 surround and
+HandBrake 1.11.2, real ingest/remux/encode/publication/cleanup, HEVC Main10, AAC/AC3 surround and
 text subtitle output, status, readiness, and the configured resource limits
 (including the pipeline's actual cgroup/tmpfs settings). Only the verified image is published
 to GHCR on a push to the default branch, tagged `sha-<commit>` and `main`.
@@ -112,9 +124,10 @@ The broader generated media check runs through the same packaged pipeline:
 scripts/container-media-matrix.sh viddyoop:test
 ```
 
-It passes on ARM64 with media on a macOS VirtioFS share. Cases cover 1080p DTS
-surround, interlaced MPEG-2 transport streams, 10-bit HEVC with ASS subtitles, and
-video without audio. Checks decode every output and verify dimensions,
+The earlier AVC checkpoint passed on ARM64 with media on a macOS VirtioFS share.
+The updated HEVC cases cover 1080p DTS surround, interlaced MPEG-2 transport
+streams and 10-bit HEVC with ASS subtitles. The HEVC profile rejects audio-less
+sources, matching the legacy policy. Checks decode every output and verify dimensions,
 progressive video, AAC/AC3 channels, subtitle text/language, duration, completed
 submissions and source cleanup. Reports retain input/output probes, status,
 image/config metadata and service logs. An optional second argument selects a new
@@ -580,8 +593,10 @@ or deleting the replacement input. Package before this test so the jar matches
 the current source.
 
 The project targets Java 17. Java 17 verification passes on Temurin
-17.0.21+9 with coverage enabled (211 tests, 16 opt-in skips). The pinned Java 17
-ARM64 image passes all 126 core tests without skips using a 512 MiB JVM heap and
+17.0.21+9 with coverage enabled (PR #8 checkpoint: 211 tests, 16 opt-in skips).
+The follow-up track-policy changes pass 232 tests with 17 opt-in skips; a separate
+2-second native test verifies E-AC-3 payload passthrough and AAC-first ordering. At the PR #8 checkpoint, the pinned Java 17
+ARM64 image passed all 126 core tests without skips using a 512 MiB JVM heap and
 PostgreSQL as the external workflow endpoint. The earlier 119-test baseline also
 passes with a disposable macOS-shared ENOSPC filesystem.
 On JDK 27, add `-Djacoco.skip=true`: the pinned coverage agent cannot instrument

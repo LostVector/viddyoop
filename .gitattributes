@@ -1,0 +1,2 @@
+# Preserve upstream unified-diff context lines verbatim.
+scripts/patches/*.patch -whitespace

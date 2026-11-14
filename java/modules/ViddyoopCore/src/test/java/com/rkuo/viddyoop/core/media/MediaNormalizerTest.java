@@ -10,6 +10,65 @@ import org.junit.rules.TemporaryFolder;
 public class MediaNormalizerTest {
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
+    @Test public void realMp4PreservesAllTextLanguagesThroughHevcEncode() throws Exception {
+        String ffmpeg = System.getProperty("viddyoop.ffmpeg");
+        String handbrake = System.getProperty("viddyoop.handbrake");
+        Assume.assumeTrue(ffmpeg != null && handbrake != null);
+        for (boolean automatic : new boolean[]{true, false}) verifyMp4(ffmpeg, handbrake, automatic);
+    }
+
+    private void verifyMp4(String ffmpeg, String handbrake, boolean automatic) throws Exception {
+        Path root = temp.newFolder(automatic ? "automatic" : "enabled").toPath();
+        Path srt = root.resolve("input.srt"), source = root.resolve("source.mp4");
+        Files.writeString(srt, "1\n00:00:00,100 --> 00:00:00,800\nText retained\n\n");
+        var runner = new MediaProcessRunner();
+        runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=24",
+                "-f", "lavfi", "-i", "anullsrc=channel_layout=5.1:sample_rate=48000", "-i", srt.toString(),
+                "-t", "1", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-map", "2:s", "-map", "2:s", "-map", "2:s",
+                "-c:v", "mpeg4", "-c:a", "eac3", "-c:s", "mov_text", "-metadata:s:a:0", "language=eng",
+                "-metadata:s:s:0", "language=deu", "-metadata:s:s:1", "language=fra",
+                "-metadata:s:s:2", "language=spa", "-metadata:s:s:3", "language=eng",
+                "-disposition:s:0", "0", "-disposition:s:1", automatic ? "default+forced" : "default",
+                "-disposition:s:2", "0", "-disposition:s:3", "0",
+                source.toString()), root.resolve("fixture.log"), Duration.ofMinutes(1), () -> {});
+        String original = MediaFiles.checksum(source, () -> {});
+        Path work = Files.createDirectory(root.resolve("normalize"));
+        var normalized = new MediaNormalizer("unused-mkvmerge", "unused-mkvextract", ffmpeg, runner)
+                .normalize(source, false, work, () -> {});
+        Assert.assertEquals(original, MediaFiles.checksum(source, () -> {}));
+        Assert.assertEquals(source.toString(), normalized.stagedPath);
+        Assert.assertEquals(List.of("deu", "fra", "spa", "eng"), normalized.subtitles.stream().map(s -> s.language).toList());
+        Assert.assertEquals(automatic, normalized.subtitles.get(1).defaultTrack);
+        Assert.assertEquals(MediaNormalizer.SUBTITLE_POLICY_VERSION, normalized.subtitlePolicyVersion);
+        for (var subtitle : normalized.subtitles) {
+            Assert.assertTrue(Files.readString(Path.of(subtitle.path)).contains("Text retained"));
+            Assert.assertEquals(subtitle.checksum, MediaFiles.checksum(Path.of(subtitle.path), () -> {}));
+        }
+        var adapter = new HandBrakeAdapter(handbrake, runner);
+        var scan = adapter.scan(source, root.resolve("scan.log"), () -> {});
+        Path output = root.resolve("output.mp4");
+        adapter.encode(source, output, scan, false, root.resolve("encode.log"), () -> {}, normalized.subtitles,
+                HandBrakeAdapter.HEVC_PROFILE);
+        Path probe = root.resolve("output.json");
+        runner.run(List.of(Path.of(ffmpeg).resolveSibling("ffprobe").toString(), "-v", "error", "-select_streams", "s",
+                "-show_streams", "-of", "json", output.toString()), probe, Duration.ofMinutes(1), () -> {});
+        var streams = new ObjectMapper().readTree(probe.toFile()).path("streams");
+        Assert.assertEquals(4, streams.size());
+        String[] expected = {"eng", "spa", "fra", "deu"};
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertEquals("mov_text", streams.get(i).path("codec_name").asText());
+            Assert.assertEquals(expected[i], streams.get(i).path("tags").path("language").asText());
+            Assert.assertEquals((automatic ? i == 2 : i == 0) ? 1 : 0,
+                    streams.get(i).path("disposition").path("default").asInt());
+            Assert.assertEquals(automatic && i == 2 ? 1 : 0,
+                    streams.get(i).path("disposition").path("forced").asInt());
+            Path text = root.resolve("output-" + i + ".srt");
+            runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-i", output.toString(), "-map", "0:s:" + i,
+                    text.toString()), root.resolve("text-" + i + ".log"), Duration.ofMinutes(1), () -> {});
+            Assert.assertTrue(Files.readString(text).contains("Text retained"));
+        }
+    }
+
     @Test public void realRemuxExtractRepairAssConversionAndSubtitleEncode() throws Exception {
         String merge = System.getProperty("viddyoop.mkvmerge");
         String extract = System.getProperty("viddyoop.mkvextract");

@@ -3,6 +3,8 @@
 Status: accepted (2026-10-03), revised 2026-11-13. Supersedes the 2014 Hadoop-based architecture.
 Step7 is implemented. Step8 recovery gates pass with synthetic media on Linux
 ARM64; step9 host integration and step10 retirement remain in progress.
+Test counts below describe the PR #8 checkpoint unless explicitly labeled as
+track-policy follow-up results; the new policy changes await pinned-container CI.
 
 The runnable pipeline registers durable submission identities and immutable source
 snapshots, validates media, and uses separate Temporal activity queues for real
@@ -65,7 +67,7 @@ successful tests do not establish production suitability of that server.
 | Stack | Java 17, Maven multi-module, `io.temporal:temporal-sdk` |
 | Host delivery | Intended recipient is the TV app on the same machine. Initial pilot writes only to a scratch library; Automatically Add to TV integration is deferred. Never edit the host library/export |
 | iTunes visibility | A read-only indexer parses iTunes Library.xml into SQLite (`itunes_items`), enabling dedupe and status views |
-| HandBrake | Prepared image currently pins Debian `handbrake-cli` 1.6.x. Revisit the toolchain pin against the observed HandBrake 1.11.2 HEVC/HDR/Dolby Vision outputs before claiming media compatibility |
+| HandBrake | Build official HandBrake 1.11.2 from a checksum-pinned release archive, with libdovi enabled. Validate the new HEVC profile in the packaged runtime and on representative media |
 
 ### Media migration baseline: existing code
 
@@ -86,13 +88,13 @@ Record each deliberate behavior change separately from a tool syntax update.
 
 | Rule | Existing authority | Current new-flow difference / migration action |
 |---|---|---|
-| Primary/secondary audio and foreign-language fallback | `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Adapter selects every track and has no language settings. Port the existing ordered selection, distinct-secondary check and first-track fallback; retain configuration |
+| Primary/secondary audio and foreign-language fallback | `AudioTrackSelection` in HBXUtils, extracted from `HBXBaseWrapperLogic.EncodeOriginal`, `GetPrimaryTrack`, `GetBestAudioTrack`; `sample_mapreduce.xml` | Shared selection drives the legacy wrapper and the HEVC adapter. JSON full language names and channel layouts bridge to the original helper; English/Japanese preferences from sample_mapreduce.xml are fixed in the versioned HEVC profile. Characterization and adapter tests cover precedence, deduplication and fallback |
 | AAC-first ordering, DPL2, 48 kHz, 224 kbps, DRC 2.0 | `GenerateHandbrakeParams` AAC loop; `ExecuteHandbrake` argument translation | Numeric settings/order already present. Keep them, with a supported AAC encoder for the runtime; do not replace them with estimates from output bitrates |
-| Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. New adapter directly encodes all non-AC-3 multichannel sources and forces 5.1/448/48 kHz even in passthrough argument positions; distinguish source-preserving passthrough from encoding settings |
-| E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | This is an old tool workaround, not evidence that every Dolby stream should be retained or that the old command provides a correct fallback. Adapt it to the user's stated AC-3 fallback policy and verify the emitted media |
-| Subtitle languages/defaults, extraction and repair | `ExtractMKVSubtitles`, `ISO6392CodeBibliographicToTerminology`, subtitle loop in `GenerateHandbrakeParams` | New normalizer retains language/default but lacks the legacy language-code mapping. Preserve that mapping and selection behavior; observed English/Spanish/French tracks are not an allowlist |
-| Subtitle count and unsupported formats | Legacy subtitle loop stops at 31 total tracks; extractor skips unsupported formats | Characterize these limits. New flow intentionally fails unsupported codecs for review under the accepted recovery contract; do not silently make the legacy truncation a new product requirement |
-| Audio-less sources | `EncodeOriginal` rejects inputs with no audio | New flow currently accepts silent video. This is an outstanding behavior difference; synthetic silent-video success does not prove legacy parity |
+| Surround eligibility, passthrough and fallback | `GenerateHandbrakeParams` surround loop; `HBXJobPreprocessor.GetPreferredAudioTrack` and `TryConvertingToAC3` | Trace the full path, including DTS-to-AC-3 preprocessing. Modern adapter now passes through AC-3/E-AC-3 with automatic source settings and otherwise encodes AC-3; retain the separate DTS-preprocessing comparison |
+| E-AC-3 workaround | `GenerateHandbrakeParams` explicitly requests `COPY_AC3` for E-AC-3 and comments that the old encoder lacks `copy:eac3` | User confirmed AC-3/E-AC-3 passthrough with AC-3 fallback. Modern adapter requests copy:eac3 explicitly; the legacy generator's old workaround remains characterized separately |
+| Subtitle languages/defaults, extraction and repair | `ExtractMKVSubtitles`, `ISO6392CodeBibliographicToTerminology`, subtitle loop in `GenerateHandbrakeParams` | Legacy mapping is now shared in SubtitlePolicy and applied at the modern encoder boundary. Keep all supported text languages, prioritized English/Spanish/French; retain per-track defaults |
+| Subtitle count and unsupported formats | Legacy subtitle loop stops at 31 total tracks; extractor skips unsupported formats | User confirmed the existing count limit. Both paths now share the 31-total-track budget and prioritize before truncation; new flow still fails unsupported codecs for review |
+| Audio-less sources | `EncodeOriginal` rejects inputs with no audio | HEVC profile rejects sources without audio, matching the legacy rule. The earlier AVC profile retains its previous behavior for saved submissions |
 | Video quality, frame rate, crop, scaling, chapters and TS filters | `GenerateHandbrakeParams` and `MAX_XRES`/`MAX_YRES` | Baseline is x264, RF20/22, 29.97 peak, zero crop, 1920x1080 ceiling, anamorphic handling, markers and TS decomb/detelecine. H.265 is explicitly requested; use the output survey to identify and validate further video updates, without silently redefining unrelated rules |
 
 Parity checks must cover competing primary tracks, foreign-language fallback,
@@ -100,6 +102,48 @@ secondary duplicates, mono/stereo/surround sources, AAC-first order, passthrough
 stream identity, DTS/E-AC-3 conversion, subtitle language aliases/defaults and
 missing audio. Cover modern video changes separately. Passing orchestration and
 recovery tests does not prove these media-policy requirements.
+
+### NAS-first parameter comparison
+
+Before long representative encodes, enumerate recent NAS inputs by modification
+time and generate an encode plan from each source's actual tracks/metadata using
+the existing selection and parameter rules. Compare that plan with a reliably
+matched existing iTunes output. Record video codec/profile/bit depth, dimensions,
+frame rate, HDR metadata, recoverable encoder settings, ordered audio codecs/
+languages/defaults, subtitles and chapters. A unique filename plus compatible
+duration is useful matching evidence; keep renamed, ambiguous and unmatched
+files separate. This is parameter validation, not a bitwise equality or visual
+quality claim. AAC nominal bitrate and DRC are set from code; average output
+bitrate does not establish those settings.
+
+The initial read-only audit starts with the 15 newest NAS inputs: eight have
+unique filename-matched outputs with duration agreement within 20 ms. Plans
+execute `AudioTrackSelection.select` and the original
+`HBXBaseWrapperLogic.GenerateHandbrakeParams` against normalized probe metadata;
+they do not reproduce those rules in a separate planner. All eight agree on
+AAC-first audio and selected language order. All eight observed surround tracks
+are E-AC-3 while the legacy generator requests its `copy:ac3` workaround. Five
+pairs have different subtitle inventories; the operator explained that these
+omissions came from manually selecting tracks to avoid clicking every subtitle.
+They do not define an intended language filter. For automated acceptance, keep
+all supported text subtitles that fit the existing track budget, prioritize
+English/Spanish/French before the cutoff, and treat additional retained languages
+as expected rather than a reference mismatch. Compare language/default metadata
+on corresponding retained tracks instead of requiring the same manually selected
+subset. Seven pairs retain input dimensions and one is cropped; that picture
+policy difference remains separate. The operator also confirmed AC-3/E-AC-3
+passthrough with AC-3 fallback.
+
+The seven newer inputs have no reliable current-profile output match in the
+scanned libraries. A renamed, older 1080p/Japanese-only title candidate remains
+separate. Recent inputs exercise duplicate English tracks, DTS-HD plus E-AC-3,
+and English/Japanese audio; the DTS/E-AC-3 source case now has a selector
+regression test. Five recent MP4 inputs contain embedded text subtitles, which
+the legacy MKV-only extraction path would omit. The new normalizer now extracts
+these with FFmpeg and shares SRT repair, language/default handling and the track
+budget with the MKV path; a native round-trip test verifies all four fixture
+languages, subtitle text and a reordered default. No representative
+encode was performed by this audit.
 
 ### Output survey: supporting evidence (2026-11-13)
 
@@ -124,23 +168,34 @@ identify the actual output resolution.
   E-AC-3 in 42, AC-3 in one. Twenty-five E-AC-3 tracks report Dolby Atmos.
   The first 64 surround packet hashes match the NAS source in eight matched
   source/output pairs, supporting passthrough for those samples; this is not a
-  whole-file identity check. These observed E-AC-3/Atmos tracks do not override
-  the operator's explicit AAC + AC-3 compatibility policy below.
+  whole-file identity check. The operator subsequently confirmed passing through
+  existing AC-3/E-AC-3, with AC-3 encoding as the fallback.
 - All 143 subtitle tracks are selectable `mov_text`, in English, Spanish or
-  French. None is marked forced. This does not establish the selection or
-  foreign-dialogue burn-in policy for every source.
+  French. The operator confirmed that the reduced inventory reflects manual
+  clicking, not an intended allowlist. None is marked forced; this does not
+  establish a foreign-dialogue burn-in policy for every source.
 - Nineteen files have chapter entries. All 43 place `moov` after `mdat` (no
   fast-start layout in this sample).
 
 This survey records existing output characteristics and helps identify video
 updates to the code baseline. It is not a complete preset or an independent
 replacement specification. H.265 is an explicit migration requirement; the
-current adapter still emits 1080p AVC. Reconcile the observed 4K dimensions,
-CRF22, VBV values, crop and HDR/Dolby Vision handling with the existing video
-rules as explicit profile changes, and validate the resulting media before
-representative acceptance. Keep unaffected audio/language/subtitle rules from
+new submissions now default to the versioned `apple-tv-hevc-v1` profile:
+Main10/slow, 4K ceiling, RF20/22 from the existing resolution rule, Level 5.0
+High Tier, source color range and explicit 60/60 VBV. The earlier `apple-tv-v1`
+AVC profile remains available for saved submissions. Preserve the existing
+29.97 peak frame rate, zero crop, anamorphic handling, chapters and TS filters.
+Validate dimensions, HDR/Dolby Vision handling and playback before representative
+acceptance. Keep unaffected audio/language/subtitle rules from
 the code. Encoder SEI and media headers cannot establish every filter, fallback
 or selection decision, and passing recovery tests do not validate the profile.
+
+The operator subsequently confirmed Main10 with the slow preset, color range
+set to same as source, and retaining explicit `vbv-maxrate=60000:vbv-bufsize=60000`.
+The 60/60 choice is intentional because the existing outputs have shown no
+observed adverse effects. Do not raise it to 100/100 simply to use the full
+Level 5.0 High Tier allowance. Pin HandBrake to stable version 1.11.2 for this
+iteration; validate the new profile before representative acceptance.
 
 ### Audio and language contract (operator clarification)
 
@@ -151,14 +206,13 @@ supersedes recommendations inferred from the sampled files:
   **224 kbps, 48 kHz, DRC 2.0**. Preserve the legacy Dolby Pro Logic II stereo
   mixdown. Additional selected languages receive their own AAC tracks; all AAC
   tracks precede the surround group.
-- For selected surround sources, append **AC-3**: pass through an existing AC-3
-  source; otherwise encode AC-3. The legacy fallback is 448 kbps with DRC 0.0;
-  passthrough preserves the source stream. The legacy mono/stereo-only case does
-  not add a redundant surround track. E-AC-3/Atmos passthrough is observed in
-  recent files but is not a replacement for this explicitly requested AC-3
-  compatibility track.
-- Port the selection behavior from
-  `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
+- For selected surround sources, **pass through existing AC-3 or E-AC-3**;
+  otherwise encode AC-3 at the existing 448 kbps / DRC 0.0 fallback settings.
+  Passthrough uses automatic mixdown/sample-rate/bitrate settings to preserve
+  the source stream. The legacy mono/stereo-only case does not add a redundant
+  surround track. This is the confirmed modernization of the old E-AC-3 workaround.
+- Reuse `HBXUtils/.../AudioTrackSelection.java`, extracted from the selection
+  behavior in `HBXWrapperExe/.../HBXBaseWrapperLogic.java`, rather than selecting every track
   or using the sampled subtitle languages as an audio allowlist. Sample
   configuration uses English primary / Japanese secondary; retain configurable
   languages and normalize their full-name/ISO representations for modern scans.
@@ -171,16 +225,82 @@ supersedes recommendations inferred from the sampled files:
   including the any-language surround fallback ahead of a primary-language
   non-Dolby track. This wrapper policy is separate from the preprocessor's
   preferred track for legacy DTS conversion.
-- Keep subtitle language/default metadata and the legacy bibliographic-to-
-  terminology language-code mapping. Subtitle extraction does not establish a
-  new English/Spanish/French-only selection policy.
+- Keep all supported text subtitle languages, prioritizing **English, Spanish,
+  French**, then other languages in original order. Use the existing
+  bibliographic-to-terminology mapping (for example `fre` to `fra`). Keep each
+  retained track's default metadata; priority does not assign a new default.
+- Preserve the existing **31 total output tracks** limit, including one video and
+  every emitted audio track. Two audio outputs leave 28 subtitle slots; four
+  leave 26. Apply priority before the cutoff and report how many tracks are
+  retained when the budget is exceeded. `SubtitlePolicy` is shared by the legacy
+  wrapper and the modern adapter, so the ordering and budget use the same rules.
 
-The current adapter already supplies 224 kbps / DRC 2.0 for AAC and AC-3
-passthrough-or-encode for surround, but lacks primary/secondary audio selection
-and the scan's audio-language field. Its current all-track behavior is a
-migration gap. Acceptance must exercise multiple languages, duplicate secondary
-selection, foreign-language fallback, AAC-first ordering, AC-3 packet preservation
-and non-AC-3 surround conversion. No representative pilot has run yet.
+The HEVC adapter now calls the shared primary/secondary selector, bridging ISO
+language codes to the old English labels (modern HandBrake can display Japanese
+as 日本語). Keep these preferences in the versioned profile so retries do not
+change with worker settings. Native MP4 extraction processes all text streams
+in one read, repairs SRT through the existing parser, and uses the shared
+language priority and total-track budget. Optional CLI values use attached
+syntax (`--srt-default=3`) so HandBrake marks the intended reordered track.
+For MP4 input, map `forced` to this automatic-display request; its `default`
+disposition merely enables the track. Test both enabled-only and explicitly
+automatic inputs through real encodes. Persist a subtitle policy version and
+regenerate older HEVC preprocessing before encoding after an upgrade.
+For MP4, distinguish enabled tracks from automatic-display defaults: HandBrake
+enables at least one subtitle for QuickTime discoverability, represented by
+FFprobe's `default` disposition, and uses `forced` for its configured default.
+An actual 30-input/28-output subtitle trial confirms that dropping the source
+default leaves all output `forced` flags clear, while the first retained subtitle
+remains enabled. Do not disable all MP4 subtitle tracks to force every FFprobe
+`default` flag to zero; that defeats the Apple compatibility behavior.
+
+Local Java 17 reactor verification passes 239 tests with zero failures/errors
+and 19 opt-in skips. Native tests verify full/limited range using decoded luma,
+actual Main10/Level 5.0 High Tier headers and 60/60 encoder SEI, E-AC-3 payload
+identity, and MP4 subtitle text/languages/defaults through an HEVC round trip.
+
+The 15 recent-file production plans agree with all eight reliable references on
+audio codec and language order. Every plan respects the 31-track limit. Fourteen
+inputs have supported text subtitles; the DTS/E-AC-3 input also has PGS subtitles
+and requires review. Do not silently omit those tracks. The newest MP4 also has invalid mastering luminance
+(minimum 1000, maximum 0.0001); HandBrake clears `HasLuminance`. Flag its full
+Dolby Vision source for review, and do not invent corrected values. The output
+guard follows HandBrake: complete mastering metadata requires valid primaries
+and luminance; the presence of a partial object alone is not proof of usable
+master-display data. Thirteen inputs have no issues detected by these planning
+checks. Private scan/plan and
+comparison evidence is retained under `local/validation/hevc-pilot` and copied
+to the isolated staging reports.
+
+Short NAS excerpts exercise 4K SDR, HDR, bilingual audio and subtitle budgets.
+The native Homebrew 1.11.2 CLI lacks libdovi support and drops Dolby Vision;
+those preliminary outputs are not Dolby Vision acceptance evidence. The HEVC
+activity now rejects missing Dolby Vision, HDR10+, valid mastering metadata or
+changed source color tags before publication. The pinned libdovi-enabled container
+has completed a real 4K bilingual Dolby
+Vision excerpt: the output retains Profile 8 configuration and frame RPU data,
+AAC English/Japanese before E-AC-3 passthrough, Level 5.0 High Tier and actual
+60/60 VBV / CRF22 encoder settings. It decodes fully. The subtitle-heavy HDR10+
+MP4 repeat also completed: 28 text subtitles, English/Spanish/French first,
+31 audio/video/subtitle tracks total, and no unintended forced-display flags.
+Both workflows have one committed artifact and one statistics row, released
+scratch reservations, and exported files matching their catalog checksums.
+
+The final code revision passes 137 core tests with no failures or skips on each
+Temporal backend in AMD64 container CI; the ARM64 checkpoint passed the then-136
+test suite on both backends. Current ARM64 native tests and the two real excerpts
+cover the subsequent subtitle and mastering-validity corrections. Apple's
+AVFoundation recognizes the exported HDR, Dolby Vision and SDR files as playable
+and decodes frames, including the 31-track subtitle sample. After being asked to
+test both clips in TV/iTunes, including audio and subtitle switching, the operator
+reported "seems ok". This accepts the short-excerpt playback gate. Full-length
+playback and operational rollout remain separate gates; no automatic import or
+full-film encode is implied by these short trials.
+
+The 4K pilot exceeded the disposable VM's original 3 GiB RAM allocation and
+completed with 4 GiB RAM plus 2 GiB swap. Validate deployment memory, overlapping
+stage workloads, throughput and the 24-hour encode activity deadline against
+full-length inputs before operational rollout.
 
 ## Why move off Hadoop
 
@@ -520,7 +640,7 @@ leftovers (`IHBXWrapperService`, `HBXWrapperConfig`), empty stubs
 - `viddyoop status` CLI combining workflow execution with catalog records;
   a later web view can use the same sources
 - Dedupe against the iTunes index
-- Modern encoders (SVT-AV1/VP9) available via HandBrake 1.6 in the image
+- Modern encoders (SVT-AV1/VP9) available via HandBrake 1.11.2 in the image
 
 ## Migration plan
 
@@ -559,13 +679,22 @@ leftovers (`IHBXWrapperService`, `HBXWrapperConfig`), empty stubs
 ### Prepared deployment pins
 
 The Dockerfile pins Maven 3.9.9/Java 17 and Debian Bookworm base manifests by
-registry digest. Media package versions are HandBrake `1.6.1+ds1-1`, MKVToolNix
-`74.0.0-1+deb12u1`, and FFmpeg `7:5.1.9-0+deb12u1`, checked against the official
-[HandBrake](https://packages.debian.org/bookworm/handbrake-cli),
-[MKVToolNix](https://packages.debian.org/bookworm/mkvtoolnix), and
-[FFmpeg](https://packages.debian.org/bookworm/ffmpeg) package pages. Java 17 and
-transitive libraries follow maintained Bookworm repositories; this is not a full
-APT snapshot lock. Pin refreshes must pass the container smoke test.
+registry digest. HandBrake `1.11.2` is built from its official source release
+with SHA-256 `12b046350f2422dc28783ff94229aff4ba5fe5e683431e057355d36163b2593a`
+and `--enable-libdovi`. Two unmodified upstream motion-metric fixes
+(`c81f57ce59d65bbfce94a3473bc53e224c9350cd` and
+`c23c4f717d5fcee6db6561d6bfd6d3479adfb709`) are backported with zero patch fuzz.
+The stock ARM64 Linux release crashes in `motion_metric_16` on the 10-bit
+720p/PFR matrix fixture; retain that regression case. See
+[backport provenance](../scripts/patches/README.md). The image label records the
+patch commits, and the runtime ships their source diffs beside the license.
+Its Rust build image and cargo-c helper archive are also
+pinned by digest/checksum. The runtime keeps only the CLI binary and license,
+not the compiler toolchain. MKVToolNix `74.0.0-1+deb12u1` and external FFmpeg
+`7:5.1.9-0+deb12u1` remain explicit Debian package pins. HandBrake's internal
+codec libraries come from its own release build. Java 17 and transitive libraries
+follow maintained Bookworm repositories; this is not a full APT snapshot lock.
+Pin refreshes must pass the container smoke and native media tests.
 
 Temporal uses CLI image `1.10.0` by digest and mounts its existing user-owned
 `/home/temporal` directory for SQLite persistence. API/UI host ports bind only to
@@ -610,8 +739,9 @@ separate from these PR checks.
 | Source replacements and destination conflicts | Cleanup tests preserve replacements, including a claimed race; publication rejects conflicts | Include representative real inputs in operational trial |
 | Shared-source identity across guest reboot | Real VirtioFS boot changes synthetic file keys. Guarded runtime retains namespace UUID, recovers one pending submission without duplicate registration and preserves the original; intake resumes after quarantine | Other sharing backends |
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
-| Target toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. All 126 also pass AMD64 container CI against both backends | Representative inputs |
-| Broader codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
+| PR8 checkpoint toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. All 126 also pass AMD64 container CI against both backends | Representative inputs |
+| PR8 checkpoint codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
+| HEVC profile and recent NAS excerpts | Pinned 1.11.2 with upstream motion-metric fixes; final AMD64 CI passes all 137 core tests on each backend. ARM64 real excerpts retain Dolby Vision frame RPU or HDR10+, ordered AAC/E-AC-3, source range and prioritized text subtitles. Full decode, Apple AVFoundation frame decode, catalog checksums and one artifact/stat per submission pass. Operator reports the two TV/iTunes clips seem OK | Full-length collection/playback, production memory/throughput and deployment mounts |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
 | Abrupt VM loss during encoding | Forced dedicated Lima VZ guest termination while real HandBrake was active, without a post-acceptance sync or clean service stop. PostgreSQL WAL recovery and Temporal retry complete the same namespace/submission/run with one verified artifact/stat and released scratch; uncertain shared original survives and intake pauses | Representative inputs and deployment storage; physical host power loss is outside this trial |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
