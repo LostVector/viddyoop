@@ -47,6 +47,146 @@ public class HandBrakeAdapterTest {
         Assert.assertEquals("2.0,2.0,0.0,0.0", option(args, "--drc"));
     }
 
+    @Test public void hevcProfileUsesMain10SlowSourceRangeAndKeepsLegacyProfileSeparate() throws Exception {
+        var scan = new HandBrakeAdapter.Scan(1, 10000, 3840, 2160,
+                List.of(new HandBrakeAdapter.Audio(1, "eac3", 6)));
+        var adapter = new HandBrakeAdapter("HandBrakeCLI", new MediaProcessRunner());
+        var args = adapter.encodeCommand(Path.of("input.mkv"), Path.of("output.mp4"), scan, false,
+                List.of(), HandBrakeAdapter.HEVC_PROFILE);
+        Assert.assertEquals("x265_10bit", option(args, "--encoder"));
+        Assert.assertEquals("main10", option(args, "--encoder-profile"));
+        Assert.assertEquals("5.0", option(args, "--encoder-level"));
+        Assert.assertEquals("slow", option(args, "--encoder-preset"));
+        Assert.assertEquals("auto", option(args, "--color-range"));
+        Assert.assertEquals("3840", option(args, "--maxWidth"));
+        Assert.assertEquals("2160", option(args, "--maxHeight"));
+        Assert.assertEquals("22", option(args, "--quality"));
+        Assert.assertTrue(option(args, "--encopts").endsWith("vbv-maxrate=60000:vbv-bufsize=60000"));
+        Assert.assertTrue(option(args, "--encopts").contains("psy-rd=0.75:psy-rdoq=4.0"));
+        Assert.assertTrue(option(args, "--encopts").contains("high-tier=1"));
+        var legacy = adapter.encodeCommand(Path.of("input.mkv"), Path.of("output.mp4"), scan, false);
+        Assert.assertEquals("x264", option(legacy, "--encoder"));
+        Assert.assertEquals("1920", option(legacy, "--maxWidth"));
+        Assert.assertFalse(legacy.contains("--color-range"));
+        Assert.assertThrows(IllegalArgumentException.class, () -> adapter.encodeCommand(
+                Path.of("input.mkv"), Path.of("output.mp4"), scan, false, List.of(), "unknown-profile"));
+    }
+
+    @Test public void hevcUsesLegacySelectionFromJsonBeforeCountingSubtitleSlots() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var root = mapper.readTree(Files.readString(Path.of(getClass().getResource("/handbrake-title-set.txt").toURI()))
+                .replace("JSON Title Set: ", ""));
+        var audio = (com.fasterxml.jackson.databind.node.ArrayNode) root.path("TitleList").get(0).path("AudioList");
+        audio.removeAll();
+        String[] languages = {"English", "English", "日本語", "Français"};
+        String[] codes = {"eng", "eng", "jpn", "fra"};
+        String[] codecs = {"dts", "eac3", "ac3", "ac3"};
+        for (int i = 0; i < languages.length; i++) {
+            audio.addObject().put("TrackNumber", i + 1).put("Language", languages[i]).put("LanguageCode", codes[i])
+                    .put("CodecName", codecs[i]).put("ChannelCount", 6).put("ChannelLayout", "5.1(side)");
+        }
+        Path log = temp.getRoot().toPath().resolve("languages.log");
+        Files.writeString(log, "JSON Title Set: " + root);
+        var scan = HandBrakeAdapter.parseScan(log);
+        Assert.assertEquals(List.of(2, 3), HandBrakeAdapter.selectedAudio(scan).stream().map(HandBrakeAdapter.Audio::track).toList());
+        var args = new HandBrakeAdapter("HandBrakeCLI", new MediaProcessRunner()).encodeCommand(
+                Path.of("input.mp4"), Path.of("output.mp4"), scan, false, manySubtitles(), HandBrakeAdapter.HEVC_PROFILE);
+        Assert.assertEquals("2,3,2,3", option(args, "--audio"));
+        Assert.assertEquals("av_aac,av_aac,copy:eac3,copy:ac3", option(args, "--aencoder"));
+        Assert.assertEquals(26, option(args, "--srt-file").split(",").length);
+    }
+
+    @Test public void selectionKeepsForeignDolbyPrecedenceDeduplicationAndFallback() {
+        var englishStereo = new HandBrakeAdapter.Audio(1, "aac", 2, "English", "stereo");
+        var japanese = new HandBrakeAdapter.Audio(2, "eac3", 6, "Japanese", "5.1");
+        var scan = new HandBrakeAdapter.Scan(1, 1000, 320, 180, List.of(englishStereo, japanese));
+        Assert.assertEquals(List.of(japanese), HandBrakeAdapter.selectedAudio(scan));
+        var french = new HandBrakeAdapter.Audio(3, "aac", 2, "French", "stereo");
+        Assert.assertEquals(List.of(french), HandBrakeAdapter.selectedAudio(
+                new HandBrakeAdapter.Scan(1, 1000, 320, 180, List.of(french))));
+        Assert.assertThrows(IllegalArgumentException.class, () -> HandBrakeAdapter.selectedAudio(
+                new HandBrakeAdapter.Scan(1, 1000, 320, 180, List.of())));
+    }
+
+    @Test public void rejectsSilentHdrLossAndColorChangesBeforePublication() throws Exception {
+        var hdr = new HandBrakeAdapter.Video(10, 1, 9, 16, 9, 8, true, true);
+        var source = new HandBrakeAdapter.Scan(1, 1000, 3840, 2160, List.of(), hdr);
+        HandBrakeAdapter.validateHevcOutput(source, source);
+        for (var changed : List.of(
+                new HandBrakeAdapter.Video(8, 1, 9, 16, 9, 8, true, true),
+                new HandBrakeAdapter.Video(10, 2, 9, 16, 9, 8, true, true),
+                new HandBrakeAdapter.Video(10, 1, 1, 1, 1, 8, true, true),
+                new HandBrakeAdapter.Video(10, 1, 9, 16, 9, 0, true, true),
+                new HandBrakeAdapter.Video(10, 1, 9, 16, 9, 8, false, true),
+                new HandBrakeAdapter.Video(10, 1, 9, 16, 9, 8, true, false))) {
+            Assert.assertThrows(java.io.IOException.class, () -> HandBrakeAdapter.validateHevcOutput(source,
+                    new HandBrakeAdapter.Scan(1, 1000, 3840, 2160, List.of(), changed)));
+        }
+    }
+
+    @Test public void realHevcMain10PreservesFullAndLimitedRange() throws Exception {
+        String handbrake = System.getProperty("viddyoop.handbrake");
+        String ffmpeg = System.getProperty("viddyoop.ffmpeg");
+        Assume.assumeTrue("Set handbrake and ffmpeg for native HEVC/range verification", handbrake != null && ffmpeg != null);
+        Path root = temp.getRoot().toPath();
+        var runner = new MediaProcessRunner();
+        var adapter = new HandBrakeAdapter(handbrake, runner);
+        for (String range : List.of("full", "limited")) {
+            String tag = range.equals("full") ? "pc" : "tv";
+            Path source = root.resolve(range + ".mkv"), output = root.resolve(range + ".mp4");
+            runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-f", "lavfi", "-i", "color=white:size=160x96:rate=24",
+                    "-f", "lavfi", "-i", "anullsrc=sample_rate=48000:channel_layout=stereo", "-t", "1",
+                    "-vf", "scale=in_range=limited:out_range=" + range + ",format=yuv420p10le", "-color_range", tag,
+                    "-c:v", "ffv1", "-c:a", "ac3", source.toString()), root.resolve(range + "-fixture.log"),
+                    java.time.Duration.ofMinutes(1), () -> {});
+            var scan = adapter.scan(source, root.resolve(range + "-scan.log"), () -> {});
+            adapter.encode(source, output, scan, false, root.resolve(range + "-encode.log"), () -> {},
+                    List.of(), HandBrakeAdapter.HEVC_PROFILE);
+            Path probe = root.resolve(range + "-output.json");
+            runner.run(List.of(Path.of(ffmpeg).resolveSibling("ffprobe").toString(), "-v", "error", "-select_streams", "v:0",
+                    "-show_streams", "-show_data", "-of", "json", output.toString()), probe, java.time.Duration.ofMinutes(1), () -> {});
+            var video = new com.fasterxml.jackson.databind.ObjectMapper().readTree(probe.toFile()).path("streams").get(0);
+            Assert.assertEquals("hevc", video.path("codec_name").asText());
+            Assert.assertEquals("Main 10", video.path("profile").asText());
+            Assert.assertEquals("yuv420p10le", video.path("pix_fmt").asText());
+            Assert.assertEquals("hvc1", video.path("codec_tag_string").asText());
+            Assert.assertEquals(150, video.path("level").asInt());
+            StringBuilder configHex = new StringBuilder();
+            for (String line : video.path("extradata").asText().split("\n")) {
+                int colon = line.indexOf(':');
+                if (colon >= 0) configHex.append(line.substring(colon + 1).split("  ", 2)[0].replaceAll("\\s", ""));
+            }
+            byte[] config = java.util.HexFormat.of().parseHex(configHex.toString());
+            Assert.assertTrue("Missing HEVC decoder configuration", config.length >= 13 && config[0] == 1);
+            Assert.assertEquals(2, config[1] & 31); // Main 10
+            Assert.assertEquals(32, config[1] & 32); // High Tier
+            Assert.assertEquals(150, config[12] & 255); // Level 5.0
+            Path bitstream = root.resolve(range + "-options.hevc");
+            runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-i", output.toString(), "-map", "0:v:0",
+                    "-frames:v", "1", "-c:v", "copy", "-bsf:v", "hevc_mp4toannexb", "-f", "hevc", bitstream.toString()),
+                    root.resolve(range + "-options.log"), java.time.Duration.ofMinutes(1), () -> {});
+            String sei = new String(Files.readAllBytes(bitstream), java.nio.charset.StandardCharsets.ISO_8859_1);
+            // Each iteration launches a fresh encoder. Check actual settings to catch
+            // accidental drift across jobs, rather than trusting the planned options.
+            for (String key : List.of("vbv-maxrate", "vbv-bufsize")) {
+                var settings = java.util.regex.Pattern.compile(key + "=([0-9]+)").matcher(sei);
+                Assert.assertTrue("Missing encoder setting " + key, settings.find());
+                do { Assert.assertEquals("60000", settings.group(1)); } while (settings.find());
+            }
+            Assert.assertEquals(tag, video.path("color_range").asText());
+            Assert.assertEquals(meanLuma(runner, ffmpeg, source, root.resolve(range + "-source-luma.log")),
+                    meanLuma(runner, ffmpeg, output, root.resolve(range + "-output-luma.log")), 3.0);
+        }
+    }
+
+    private static double meanLuma(MediaProcessRunner runner, String ffmpeg, Path video, Path log) throws Exception {
+        runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-i", video.toString(), "-frames:v", "1",
+                "-vf", "signalstats,metadata=print:file=-", "-f", "null", "-"), log, java.time.Duration.ofMinutes(1), () -> {});
+        var match = java.util.regex.Pattern.compile("(?m)^lavfi.signalstats.YAVG=([0-9.]+)$").matcher(Files.readString(log));
+        Assert.assertTrue("Luma statistic missing", match.find());
+        return Double.parseDouble(match.group(1));
+    }
+
     @Test public void prioritizesSubtitlesBeforeBudgetAndUpdatesDefaultIndex() throws Exception {
         var scan = new HandBrakeAdapter.Scan(1, 10000, 1920, 1080,
                 List.of(new HandBrakeAdapter.Audio(1, "eac3", 6)));
@@ -59,7 +199,7 @@ public class HandBrakeAdapterTest {
         Assert.assertEquals(Arrays.asList("english.srt", "spanish.srt", "french.srt"), Arrays.asList(paths).subList(0, 3));
         Assert.assertEquals("other-24.srt", paths[27]);
         Assert.assertTrue(option(args, "--srt-lang").startsWith("eng,spa,fra,"));
-        Assert.assertEquals("3", option(args, "--srt-default"));
+        Assert.assertTrue(args.contains("--srt-default=3"));
         Assert.assertEquals(30, subtitles.size());
     }
 

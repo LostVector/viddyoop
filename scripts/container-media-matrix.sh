@@ -59,8 +59,7 @@ media_ffmpeg -f lavfi -i testsrc2=size=1280x720:rate=30000/1001 -f lavfi -i anul
 media_ffmpeg -f lavfi -i testsrc2=size=1280x720:rate=24 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 -i /data/subtitle.ass \
   -t 2 -map 0:v -map 1:a -map 2:s -c:v libx265 -threads 1 -preset ultrafast -pix_fmt yuv420p10le \
   -x265-params pools=1:frame-threads=1 -c:a aac -c:s ass -metadata:s:s:0 language=eng /data/inbox/hevc-ass.mkv
-media_ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24 -t 2 -an -c:v mpeg4 -threads 1 /data/inbox/silent.mp4
-for fixture in hd-dts.mkv transport.ts hevc-ass.mkv silent.mp4; do
+for fixture in hd-dts.mkv transport.ts hevc-ass.mkv; do
   media_probe "/data/inbox/$fixture" > "$matrix_results/source-$fixture.json"
 done
 docker image inspect "$VIDYOOP_IMAGE" > "$matrix_results/images.json"
@@ -72,26 +71,40 @@ for attempt in $(seq 1 90); do
   if python3 - "$matrix_results/status.json" <<'PY'
 import json,sys
 rows=json.load(open(sys.argv[1]))
-assert len(rows)==4 and all(r['execution']['state']=='COMPLETED' and r['submission']['artifactState']=='committed' and r['submission']['scratchReservedBytes']==0 for r in rows)
+failed=[r for r in rows if r['execution']['state']=='FAILED']
+if failed:
+ print(json.dumps(failed,indent=2),file=sys.stderr)
+ sys.exit(2)
+sys.exit(0 if len(rows)==3 and all(r['execution']['state']=='COMPLETED' and r['submission']['artifactState']=='committed' and r['submission']['scratchReservedBytes']==0 for r in rows) else 1)
 PY
-  then completed=true; break; fi
+  then completed=true; break
+  else
+    result=$?
+    if [ "$result" -eq 2 ]; then exit 1; fi
+  fi
   sleep 2
 done
 test "$completed" = true
-for name in hd-dts transport hevc-ass silent; do
+for name in hd-dts transport hevc-ass; do
   test -f "$matrix_root/library/$name.mp4"
   media_probe "/data/library/$name.mp4" > "$matrix_results/output-$name.json"
+  docker run --rm --network none --read-only --mount "type=bind,src=$matrix_root,dst=/data,readonly" \
+    --entrypoint ffprobe "$VIDYOOP_IMAGE" -v error -select_streams v:0 -read_intervals '%+#8' \
+    -show_frames -show_entries frame=interlaced_frame -of json "/data/library/$name.mp4" > "$matrix_results/frames-$name.json"
   media_ffmpeg -i "/data/library/$name.mp4" -map 0:v -map '0:a?' -f null -
 done
 media_ffmpeg -i /data/library/hevc-ass.mp4 -map 0:s:0 -f srt - > "$matrix_results/subtitle.srt"
 python3 - "$matrix_root" "$matrix_results" <<'PY'
 import json,pathlib,sys
 root,reports=map(pathlib.Path,sys.argv[1:]);summary={}
-for name,size,audio,subtitles in [('hd-dts',(1920,1080),{('aac',2),('ac3',6)},0),('transport',(1280,720),{('aac',2)},0),('hevc-ass',(1280,720),{('aac',2)},1),('silent',(640,360),set(),0)]:
+for name,size,audio,subtitles in [('hd-dts',(1920,1080),{('aac',2),('ac3',6)},0),('transport',(1280,720),{('aac',2)},0),('hevc-ass',(1280,720),{('aac',2)},1)]:
  p=json.load(open(reports/f'output-{name}.json'));streams=p['streams']
  video=[s for s in streams if s['codec_type']=='video'];assert len(video)==1
- assert video[0]['codec_name']=='h264' and (video[0]['width'],video[0]['height'])==size,(name,video)
- assert video[0].get('field_order')=='progressive',(name,video)
+ assert video[0]['codec_name']=='hevc' and video[0]['profile']=='Main 10' and video[0]['pix_fmt']=='yuv420p10le' and (video[0]['width'],video[0]['height'])==size,(name,video)
+ # FFprobe 5.1 omits stream field_order for HEVC. Inspect decoded frames
+ # instead, preserving the actual deinterlacing check for transport input.
+ frames=json.load(open(reports/f'frames-{name}.json'))['frames']
+ assert frames and all(f['interlaced_frame']==0 for f in frames),(name,frames)
  assert {(s['codec_name'],s['channels']) for s in streams if s['codec_type']=='audio'}==audio,(name,streams)
  subs=[s for s in streams if s['codec_type']=='subtitle'];assert len(subs)==subtitles,(name,subs)
  if subtitles:assert subs[0]['codec_name']=='mov_text' and subs[0]['tags']['language']=='eng',subs

@@ -81,7 +81,7 @@ public final class NativeMediaActivities implements PreprocessActivity, EncodeAc
 
     @Override public EncodeResult encode(PipelineInput input, PreprocessResult pre) {
         try {
-            if (!"apple-tv-v1".equals(input.encodeProfile)) throw new IOException("Unsupported encode profile: " + input.encodeProfile);
+            if (!HandBrakeAdapter.supportsProfile(input.encodeProfile)) throw new IOException("Unsupported encode profile: " + input.encodeProfile);
             Path source = source(input);
             Path attempt = attempt(input, "encode");
             // A completed Temporal activity does not restore deleted intermediate files.
@@ -92,9 +92,10 @@ public final class NativeMediaActivities implements PreprocessActivity, EncodeAc
             Path output = attempt.resolve("encoded.mp4");
             long start = System.nanoTime();
             adapter.encode(source, output, scan, input.sourcePath.toLowerCase(java.util.Locale.ROOT).endsWith(".ts"),
-                    attempt.resolve("encode.log"), NativeMediaActivities::heartbeat, pre.subtitles);
+                    attempt.resolve("encode.log"), NativeMediaActivities::heartbeat, pre.subtitles, input.encodeProfile);
             long elapsed = (System.nanoTime() - start) / 1_000_000;
             var verified = adapter.scan(output, attempt.resolve("verify.log"), NativeMediaActivities::heartbeat);
+            if (HandBrakeAdapter.HEVC_PROFILE.equals(input.encodeProfile)) HandBrakeAdapter.validateHevcOutput(scan, verified);
             if (Math.abs(verified.durationMs() - scan.durationMs()) > Math.max(1000, scan.durationMs() / 100)) {
                 throw new IOException("Encoded duration differs from source");
             }

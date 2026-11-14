@@ -40,7 +40,7 @@ chmod 0755 "$smoke_root"
 mkdir -p "$VIDYOOP_INBOX_DIR" "$VIDYOOP_LIBRARY_DIR" "$VIDYOOP_ARCHIVE_DIR"
 chmod 0777 "$VIDYOOP_INBOX_DIR" "$VIDYOOP_LIBRARY_DIR" "$VIDYOOP_ARCHIVE_DIR"
 docker run --rm --entrypoint HandBrakeCLI "$VIDYOOP_IMAGE" --version 2>&1 | tee "$smoke_root/handbrake-version"
-grep -Eq 'HandBrake 1\.6\.' "$smoke_root/handbrake-version"
+grep -Eq 'HandBrake 1\.11\.2($|[[:space:]])' "$smoke_root/handbrake-version"
 cat > "$smoke_root/subtitle.srt" <<'SRT'
 1
 00:00:00,100 --> 00:00:01,500
@@ -99,11 +99,14 @@ PY
 done
 [ "$completed" = true ]
 docker run --rm -v "$VIDYOOP_LIBRARY_DIR:/library:ro" --entrypoint ffprobe "$VIDYOOP_IMAGE" \
-  -v error -show_entries stream=codec_name,codec_type -of json /library/smoke.mp4 > "$smoke_root/streams.json"
-python3 - "$smoke_root/streams.json" <<'PY'
+  -v error -show_entries stream=codec_name,codec_type,profile,pix_fmt -of json /library/smoke.mp4 > "$smoke_root/streams.json"
+python3 - "$smoke_root/streams.json" "$smoke_root/status.json" <<'PY'
 import json,sys
-streams={(s['codec_type'],s['codec_name']) for s in json.load(open(sys.argv[1]))['streams']}
-assert {('video','h264'),('audio','aac'),('audio','ac3'),('subtitle','mov_text')} <= streams, streams
+rows=json.load(open(sys.argv[1]))['streams'];streams={(s['codec_type'],s['codec_name']) for s in rows}
+assert {('video','hevc'),('audio','aac'),('audio','ac3'),('subtitle','mov_text')} <= streams, streams
+video=next(s for s in rows if s['codec_type']=='video')
+assert video['profile']=='Main 10' and video['pix_fmt']=='yuv420p10le',video
+assert json.load(open(sys.argv[2]))[0]['submission']['profile']=='apple-tv-hevc-v1'
 PY
 compose exec -T pipeline java -jar /app/viddyoop.jar health
 if [ "${2:-dev}" = server ]; then

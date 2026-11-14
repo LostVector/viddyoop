@@ -32,6 +32,7 @@ public final class Viddyoop implements Runnable {
         @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
         @Option(names="--queue") String queue = env("VIDYOOP_QUEUE", "viddyoop");
         @Option(names="--handbrake") String handbrake = env("VIDYOOP_HANDBRAKE", "/usr/bin/HandBrakeCLI");
+        @Option(names="--profile") String profile = env("VIDYOOP_PROFILE", HandBrakeAdapter.HEVC_PROFILE);
         @Option(names="--mkvmerge") String mkvmerge = env("VIDYOOP_MKVMERGE", "/usr/bin/mkvmerge");
         @Option(names="--mkvextract") String mkvextract = env("VIDYOOP_MKVEXTRACT", "/usr/bin/mkvextract");
         @Option(names="--ffmpeg") String ffmpeg = env("VIDYOOP_FFMPEG", "/usr/bin/ffmpeg");
@@ -49,6 +50,7 @@ public final class Viddyoop implements Runnable {
                 throw new IllegalArgumentException("Invalid concurrency, polling, capacity, or queue configuration");
             }
             if (!Set.of("movies", "none").contains(archivePolicy)) throw new IllegalArgumentException("Archive policy must be movies or none");
+            if (!HandBrakeAdapter.supportsProfile(profile)) throw new IllegalArgumentException("Unsupported encode profile: " + profile);
             for (Path directory : List.of(inbox, work, library, database.toAbsolutePath().getParent())) {
                 Files.createDirectories(directory);
             }
@@ -146,7 +148,7 @@ public final class Viddyoop implements Runnable {
                                     continue;
                                 }
                                 String name = com.rkuo.viddyoop.core.policy.LibraryNames.outputName(source);
-                                var input = coordinator.accept(source, "apple-tv-v1", "discovery", library.resolve(name), 0, archivePolicy, archivePolicy.equals("none") ? null : archive);
+                                var input = coordinator.accept(source, profile, "discovery", library.resolve(name), 0, archivePolicy, archivePolicy.equals("none") ? null : archive);
                                 accepted.put(source, new Accepted(version, Path.of(input.stagedSourcePath)));
                                 dispatcher.dispatchPending();
                             } catch (InterruptedException e) { throw e; }
