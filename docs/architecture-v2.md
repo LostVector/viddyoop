@@ -123,11 +123,16 @@ execute `AudioTrackSelection.select` and the original
 they do not reproduce those rules in a separate planner. All eight agree on
 AAC-first audio and selected language order. All eight observed surround tracks
 are E-AC-3 while the legacy generator requests its `copy:ac3` workaround. Five
-pairs have different subtitle inventories; seven retain the input dimensions
-and one is cropped. These are explicit comparison differences, not silently
-accepted matches. The operator confirmed AC-3/E-AC-3 passthrough with AC-3 fallback, and all
-supported text subtitle languages with English/Spanish/French priority under the
-existing total-track limit.
+pairs have different subtitle inventories; the operator explained that these
+omissions came from manually selecting tracks to avoid clicking every subtitle.
+They do not define an intended language filter. For automated acceptance, keep
+all supported text subtitles that fit the existing track budget, prioritize
+English/Spanish/French before the cutoff, and treat additional retained languages
+as expected rather than a reference mismatch. Compare language/default metadata
+on corresponding retained tracks instead of requiring the same manually selected
+subset. Seven pairs retain input dimensions and one is cropped; that picture
+policy difference remains separate. The operator also confirmed AC-3/E-AC-3
+passthrough with AC-3 fallback.
 
 The seven newer inputs have no reliable current-profile output match in the
 scanned libraries. A renamed, older 1080p/Japanese-only title candidate remains
@@ -164,8 +169,9 @@ identify the actual output resolution.
   whole-file identity check. The operator subsequently confirmed passing through
   existing AC-3/E-AC-3, with AC-3 encoding as the fallback.
 - All 143 subtitle tracks are selectable `mov_text`, in English, Spanish or
-  French. None is marked forced. This does not establish the selection or
-  foreign-dialogue burn-in policy for every source.
+  French. The operator confirmed that the reduced inventory reflects manual
+  clicking, not an intended allowlist. None is marked forced; this does not
+  establish a foreign-dialogue burn-in policy for every source.
 - Nineteen files have chapter entries. All 43 place `moov` after `mdat` (no
   fast-start layout in this sample).
 
