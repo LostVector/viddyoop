@@ -10,6 +10,7 @@ import java.util.*;
 
 /** Remuxes owned MKVs and repairs embedded text subtitles without changing the snapshot. */
 public final class MediaNormalizer {
+    public static final int SUBTITLE_POLICY_VERSION = 2;
     private final String merge, extract, ffmpeg;
     private final MediaProcessRunner runner;
     public MediaNormalizer(String merge, String extract, String ffmpeg, MediaProcessRunner runner) {
@@ -19,6 +20,7 @@ public final class MediaNormalizer {
     public PreprocessResult normalize(Path source, boolean matroska, Path attempt, Runnable heartbeat)
             throws IOException, InterruptedException {
         PreprocessResult result = new PreprocessResult();
+        result.subtitlePolicyVersion = SUBTITLE_POLICY_VERSION;
         Path normalized = source;
         if (matroska) {
             normalized = attempt.resolve("normalized.mkv");
@@ -58,11 +60,13 @@ public final class MediaNormalizer {
             Path identification = attempt.resolve("tracks.json");
             String probe = Path.of(ffmpeg).resolveSibling("ffprobe").toString();
             runner.run(List.of(probe, "-v", "error", "-show_entries",
-                    "stream=index,codec_type,codec_name:stream_tags=language:stream_disposition=default",
+                    "stream=index,codec_type,codec_name:stream_tags=language:stream_disposition=default,forced:format=format_name",
                     "-of", "json", source.toString()), identification, Duration.ofMinutes(5), heartbeat);
             if (Files.size(identification) > 16 * 1024 * 1024) throw new IOException("Track identification too large");
             var root = new ObjectMapper().readTree(identification.toFile());
             if (!root.path("streams").isArray()) throw new IOException("Missing stream identification");
+            var formats = Arrays.asList(root.path("format").path("format_name").asText().split(","));
+            boolean isoMedia = formats.contains("mov") || formats.contains("mp4");
             var extraction = new ArrayList<>(List.of(ffmpeg, "-nostdin", "-y", "-i", source.toString()));
             var tracks = new ArrayList<com.fasterxml.jackson.databind.JsonNode>();
             for (var track : root.path("streams")) {
@@ -84,7 +88,9 @@ public final class MediaNormalizer {
                 int id = track.path("index").asInt();
                 Path srt = attempt.resolve("subtitle-" + id + ".srt");
                 result.subtitles.add(repair(srt, attempt, id, track.path("tags").path("language").asText("und"),
-                        track.path("disposition").path("default").asInt() == 1, heartbeat));
+                        // MP4 default means enabled/discoverable, not automatic
+                        // display. HandBrake encodes its SRT default as forced.
+                        track.path("disposition").path(isoMedia ? "forced" : "default").asInt() == 1, heartbeat));
             }
         }
         result.stagedPath = normalized.toString();

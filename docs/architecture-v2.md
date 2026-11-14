@@ -242,6 +242,17 @@ change with worker settings. Native MP4 extraction processes all text streams
 in one read, repairs SRT through the existing parser, and uses the shared
 language priority and total-track budget. Optional CLI values use attached
 syntax (`--srt-default=3`) so HandBrake marks the intended reordered track.
+For MP4 input, map `forced` to this automatic-display request; its `default`
+disposition merely enables the track. Test both enabled-only and explicitly
+automatic inputs through real encodes. Persist a subtitle policy version and
+regenerate older HEVC preprocessing before encoding after an upgrade.
+For MP4, distinguish enabled tracks from automatic-display defaults: HandBrake
+enables at least one subtitle for QuickTime discoverability, represented by
+FFprobe's `default` disposition, and uses `forced` for its configured default.
+An actual 30-input/28-output subtitle trial confirms that dropping the source
+default leaves all output `forced` flags clear, while the first retained subtitle
+remains enabled. Do not disable all MP4 subtitle tracks to force every FFprobe
+`default` flag to zero; that defeats the Apple compatibility behavior.
 
 Local Java 17 reactor verification passes 238 tests with zero failures/errors
 and 19 opt-in skips. Native tests verify full/limited range using decoded luma,
@@ -259,8 +270,11 @@ Short NAS excerpts exercise 4K SDR, HDR, bilingual audio and subtitle budgets.
 The native Homebrew 1.11.2 CLI lacks libdovi support and drops Dolby Vision;
 those preliminary outputs are not Dolby Vision acceptance evidence. The HEVC
 activity now rejects missing Dolby Vision, HDR10+, mastering metadata or changed
-source color tags before publication. Repeat the HDR/Dolby Vision trials using
-the pinned libdovi-enabled container. Actual TV playback remains an acceptance
+source color tags before publication. The pinned libdovi-enabled container has completed a real 4K bilingual Dolby
+Vision excerpt: the output retains Profile 8 configuration and frame RPU data,
+AAC English/Japanese before E-AC-3 passthrough, Level 5.0 High Tier and actual
+60/60 VBV / CRF22 encoder settings. It decodes fully. The subtitle-heavy MP4
+repeat is completing with the corrected enabled/automatic bridge. Actual TV playback remains an acceptance
 gate; no automatic import or full-film encode is implied by these short trials.
 
 ## Why move off Hadoop

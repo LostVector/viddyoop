@@ -14,7 +14,12 @@ public class MediaNormalizerTest {
         String ffmpeg = System.getProperty("viddyoop.ffmpeg");
         String handbrake = System.getProperty("viddyoop.handbrake");
         Assume.assumeTrue(ffmpeg != null && handbrake != null);
-        Path root = temp.getRoot().toPath(), srt = root.resolve("input.srt"), source = root.resolve("source.mp4");
+        for (boolean automatic : new boolean[]{true, false}) verifyMp4(ffmpeg, handbrake, automatic);
+    }
+
+    private void verifyMp4(String ffmpeg, String handbrake, boolean automatic) throws Exception {
+        Path root = temp.newFolder(automatic ? "automatic" : "enabled").toPath();
+        Path srt = root.resolve("input.srt"), source = root.resolve("source.mp4");
         Files.writeString(srt, "1\n00:00:00,100 --> 00:00:00,800\nText retained\n\n");
         var runner = new MediaProcessRunner();
         runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=24",
@@ -23,7 +28,8 @@ public class MediaNormalizerTest {
                 "-c:v", "mpeg4", "-c:a", "eac3", "-c:s", "mov_text", "-metadata:s:a:0", "language=eng",
                 "-metadata:s:s:0", "language=deu", "-metadata:s:s:1", "language=fra",
                 "-metadata:s:s:2", "language=spa", "-metadata:s:s:3", "language=eng",
-                "-disposition:s:0", "0", "-disposition:s:1", "default", "-disposition:s:2", "0", "-disposition:s:3", "0",
+                "-disposition:s:0", "0", "-disposition:s:1", automatic ? "default+forced" : "default",
+                "-disposition:s:2", "0", "-disposition:s:3", "0",
                 source.toString()), root.resolve("fixture.log"), Duration.ofMinutes(1), () -> {});
         String original = MediaFiles.checksum(source, () -> {});
         Path work = Files.createDirectory(root.resolve("normalize"));
@@ -32,7 +38,8 @@ public class MediaNormalizerTest {
         Assert.assertEquals(original, MediaFiles.checksum(source, () -> {}));
         Assert.assertEquals(source.toString(), normalized.stagedPath);
         Assert.assertEquals(List.of("deu", "fra", "spa", "eng"), normalized.subtitles.stream().map(s -> s.language).toList());
-        Assert.assertTrue(normalized.subtitles.get(1).defaultTrack);
+        Assert.assertEquals(automatic, normalized.subtitles.get(1).defaultTrack);
+        Assert.assertEquals(MediaNormalizer.SUBTITLE_POLICY_VERSION, normalized.subtitlePolicyVersion);
         for (var subtitle : normalized.subtitles) {
             Assert.assertTrue(Files.readString(Path.of(subtitle.path)).contains("Text retained"));
             Assert.assertEquals(subtitle.checksum, MediaFiles.checksum(Path.of(subtitle.path), () -> {}));
@@ -51,7 +58,10 @@ public class MediaNormalizerTest {
         for (int i = 0; i < expected.length; i++) {
             Assert.assertEquals("mov_text", streams.get(i).path("codec_name").asText());
             Assert.assertEquals(expected[i], streams.get(i).path("tags").path("language").asText());
-            Assert.assertEquals(i == 2 ? 1 : 0, streams.get(i).path("disposition").path("default").asInt());
+            Assert.assertEquals((automatic ? i == 2 : i == 0) ? 1 : 0,
+                    streams.get(i).path("disposition").path("default").asInt());
+            Assert.assertEquals(automatic && i == 2 ? 1 : 0,
+                    streams.get(i).path("disposition").path("forced").asInt());
             Path text = root.resolve("output-" + i + ".srt");
             runner.run(List.of(ffmpeg, "-nostdin", "-v", "error", "-i", output.toString(), "-map", "0:s:" + i,
                     text.toString()), root.resolve("text-" + i + ".log"), Duration.ofMinutes(1), () -> {});

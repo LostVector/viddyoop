@@ -113,6 +113,8 @@ public final class NativeMediaActivities implements PreprocessActivity, EncodeAc
 
     private boolean validPreprocess(PipelineInput input, PreprocessResult pre) throws IOException {
         if (pre == null || pre.stagedPath == null || pre.checksum == null || pre.subtitles == null) return false;
+        if (HandBrakeAdapter.HEVC_PROFILE.equals(input.encodeProfile)
+                && pre.subtitlePolicyVersion != MediaNormalizer.SUBTITLE_POLICY_VERSION) return false;
         Path owned = work.resolve(input.submissionId).toAbsolutePath().normalize();
         Path media = Path.of(pre.stagedPath).toAbsolutePath().normalize();
         Path snapshot = Path.of(input.stagedSourcePath).toAbsolutePath().normalize();
