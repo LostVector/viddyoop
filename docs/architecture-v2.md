@@ -254,7 +254,7 @@ default leaves all output `forced` flags clear, while the first retained subtitl
 remains enabled. Do not disable all MP4 subtitle tracks to force every FFprobe
 `default` flag to zero; that defeats the Apple compatibility behavior.
 
-Local Java 17 reactor verification passes 238 tests with zero failures/errors
+Local Java 17 reactor verification passes 239 tests with zero failures/errors
 and 19 opt-in skips. Native tests verify full/limited range using decoded luma,
 actual Main10/Level 5.0 High Tier headers and 60/60 encoder SEI, E-AC-3 payload
 identity, and MP4 subtitle text/languages/defaults through an HEVC round trip.
@@ -262,7 +262,12 @@ identity, and MP4 subtitle text/languages/defaults through an HEVC round trip.
 The 15 recent-file production plans agree with all eight reliable references on
 audio codec and language order. Every plan respects the 31-track limit. Fourteen
 inputs have supported text subtitles; the DTS/E-AC-3 input also has PGS subtitles
-and requires review. Do not silently omit those tracks. Private scan/plan and
+and requires review. The newest MP4 also has invalid mastering luminance
+(minimum 1000, maximum 0.0001); HandBrake clears `HasLuminance`. Flag its full
+Dolby Vision source for review, and do not invent corrected values. The output
+guard follows HandBrake: complete mastering metadata requires valid primaries
+and luminance; the presence of a partial object alone is not proof of usable
+master-display data. Do not silently omit those tracks. Private scan/plan and
 comparison evidence is retained under `local/validation/hevc-pilot` and copied
 to the isolated staging reports.
 

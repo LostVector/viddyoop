@@ -90,11 +90,16 @@ public final class HandBrakeAdapter {
                     language, track.path("ChannelLayout").asText("")));
         }
         var color = title.path("Color");
+        var mastering = title.path("MasteringDisplayColorVolume");
         return new Scan(index, milliseconds, width, height, List.copyOf(audio),
                 new Video(color.path("BitDepth").asInt(), color.path("Range").asInt(),
                         color.path("Primary").asInt(), color.path("Transfer").asInt(), color.path("Matrix").asInt(),
                         title.path("DolbyVisionConfigurationRecord").path("DVProfile").asInt(),
-                        title.path("HDR10+").asInt() != 0, title.has("MasteringDisplayColorVolume")));
+                        title.path("HDR10+").asInt() != 0,
+                        // encx265 emits master-display only when both portions
+                        // are valid. Partial source objects are not complete HDR
+                        // metadata (e.g. reversed min/max clears HasLuminance).
+                        mastering.path("HasPrimaries").asBoolean() && mastering.path("HasLuminance").asBoolean()));
     }
 
     /** Do not publish an apparently successful encode that silently lost HDR or range. */

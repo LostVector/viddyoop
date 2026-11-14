@@ -124,6 +124,26 @@ public class HandBrakeAdapterTest {
         }
     }
 
+    @Test public void permitsOmittedPartialMasteringButRejectsLostCompleteMetadata() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var root = mapper.readTree(Files.readString(Path.of(getClass().getResource("/handbrake-title-set.txt").toURI()))
+                .replace("JSON Title Set: ", ""));
+        var title = (com.fasterxml.jackson.databind.node.ObjectNode) root.path("TitleList").get(0);
+        var mastering = title.putObject("MasteringDisplayColorVolume");
+        mastering.put("HasPrimaries", true).put("HasLuminance", false);
+        Path log = temp.getRoot().toPath().resolve("mastering.log");
+        Files.writeString(log, "JSON Title Set: " + root);
+        var partial = HandBrakeAdapter.parseScan(log);
+        var color = partial.video();
+        var output = new HandBrakeAdapter.Scan(1, 2005, 320, 180, partial.audio(),
+                new HandBrakeAdapter.Video(10, color.range(), color.primaries(), color.transfer(), color.matrix(), 0, false, false));
+        HandBrakeAdapter.validateHevcOutput(partial, output);
+        mastering.put("HasLuminance", true);
+        Files.writeString(log, "JSON Title Set: " + root);
+        var complete = HandBrakeAdapter.parseScan(log);
+        Assert.assertThrows(java.io.IOException.class, () -> HandBrakeAdapter.validateHevcOutput(complete, output));
+    }
+
     @Test public void realHevcMain10PreservesFullAndLimitedRange() throws Exception {
         String handbrake = System.getProperty("viddyoop.handbrake");
         String ffmpeg = System.getProperty("viddyoop.ffmpeg");
