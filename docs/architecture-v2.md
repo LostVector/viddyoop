@@ -262,25 +262,43 @@ identity, and MP4 subtitle text/languages/defaults through an HEVC round trip.
 The 15 recent-file production plans agree with all eight reliable references on
 audio codec and language order. Every plan respects the 31-track limit. Fourteen
 inputs have supported text subtitles; the DTS/E-AC-3 input also has PGS subtitles
-and requires review. The newest MP4 also has invalid mastering luminance
+and requires review. Do not silently omit those tracks. The newest MP4 also has invalid mastering luminance
 (minimum 1000, maximum 0.0001); HandBrake clears `HasLuminance`. Flag its full
 Dolby Vision source for review, and do not invent corrected values. The output
 guard follows HandBrake: complete mastering metadata requires valid primaries
 and luminance; the presence of a partial object alone is not proof of usable
-master-display data. Do not silently omit those tracks. Private scan/plan and
+master-display data. Thirteen inputs have no issues detected by these planning
+checks. Private scan/plan and
 comparison evidence is retained under `local/validation/hevc-pilot` and copied
 to the isolated staging reports.
 
 Short NAS excerpts exercise 4K SDR, HDR, bilingual audio and subtitle budgets.
 The native Homebrew 1.11.2 CLI lacks libdovi support and drops Dolby Vision;
 those preliminary outputs are not Dolby Vision acceptance evidence. The HEVC
-activity now rejects missing Dolby Vision, HDR10+, mastering metadata or changed
-source color tags before publication. The pinned libdovi-enabled container has completed a real 4K bilingual Dolby
+activity now rejects missing Dolby Vision, HDR10+, valid mastering metadata or
+changed source color tags before publication. The pinned libdovi-enabled container
+has completed a real 4K bilingual Dolby
 Vision excerpt: the output retains Profile 8 configuration and frame RPU data,
 AAC English/Japanese before E-AC-3 passthrough, Level 5.0 High Tier and actual
-60/60 VBV / CRF22 encoder settings. It decodes fully. The subtitle-heavy MP4
-repeat is completing with the corrected enabled/automatic bridge. Actual TV playback remains an acceptance
-gate; no automatic import or full-film encode is implied by these short trials.
+60/60 VBV / CRF22 encoder settings. It decodes fully. The subtitle-heavy HDR10+
+MP4 repeat also completed: 28 text subtitles, English/Spanish/French first,
+31 audio/video/subtitle tracks total, and no unintended forced-display flags.
+Both workflows have one committed artifact and one statistics row, released
+scratch reservations, and exported files matching their catalog checksums.
+
+The final code revision passes 137 core tests with no failures or skips on each
+Temporal backend in AMD64 container CI; the ARM64 checkpoint passed the then-136
+test suite on both backends. Current ARM64 native tests and the two real excerpts
+cover the subsequent subtitle and mastering-validity corrections. Apple's
+AVFoundation recognizes the exported HDR, Dolby Vision and SDR files as playable
+and decodes frames, including the 31-track subtitle sample. Actual TV playback
+remains an operator acceptance gate; no automatic import or full-film encode is
+implied by these short trials.
+
+The 4K pilot exceeded the disposable VM's original 3 GiB RAM allocation and
+completed with 4 GiB RAM plus 2 GiB swap. Validate deployment memory, overlapping
+stage workloads, throughput and the 24-hour encode activity deadline against
+full-length inputs before operational rollout.
 
 ## Why move off Hadoop
 
@@ -721,6 +739,7 @@ separate from these PR checks.
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
 | PR8 checkpoint toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. All 126 also pass AMD64 container CI against both backends | Representative inputs |
 | PR8 checkpoint codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
+| HEVC profile and recent NAS excerpts | Pinned 1.11.2 with upstream motion-metric fixes; final AMD64 CI passes all 137 core tests on each backend. ARM64 real excerpts retain Dolby Vision frame RPU or HDR10+, ordered AAC/E-AC-3, source range and prioritized text subtitles. Full decode, Apple AVFoundation frame decode, catalog checksums and one artifact/stat per submission pass | Operator TV playback, full-length collection, production memory/throughput and deployment mounts |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
 | Abrupt VM loss during encoding | Forced dedicated Lima VZ guest termination while real HandBrake was active, without a post-acceptance sync or clean service stop. PostgreSQL WAL recovery and Temporal retry complete the same namespace/submission/run with one verified artifact/stat and released scratch; uncertain shared original survives and intake pauses | Representative inputs and deployment storage; physical host power loss is outside this trial |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
