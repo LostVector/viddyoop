@@ -1,0 +1,63 @@
+# Overlay docker-compose.server.yml. Media is mounted by the Linux Docker engine;
+# PostgreSQL and the catalog stay on local Docker volumes.
+services:
+  nas-check:
+    image: ${VIDYOOP_IMAGE:?Set VIDYOOP_IMAGE to the deployment image}
+    cpus: 0.25
+    mem_limit: 64m
+    read_only: true
+    network_mode: none
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        test -f /data/.viddyoop-media-root || {
+          echo 'Expected isolated NAS root marker is missing' >&2; exit 1;
+        }
+        for directory in inbox work library archive; do
+          test -d "/data/$$directory" || {
+            echo "Missing NAS directory: $$directory" >&2; exit 1;
+          }
+        done
+        probe=$$(mktemp /data/work/.deployment-write-check.XXXXXXXX)
+        trap 'rm -f "$$probe"' EXIT
+        # CIFS can briefly return ESTALE when reopening a freshly created file.
+        # Do not change inode/mount options or accept a persistent write failure.
+        for attempt in 1 2 3 4 5; do
+          if (printf 'viddyoop deployment check\n' > "$$probe" && sync "$$probe"); then
+            exit 0
+          fi
+          sleep 1
+        done
+        echo 'NAS write/fsync check failed after metadata-settle retries' >&2
+        exit 1
+    volumes:
+      - &nas-media
+        type: volume
+        source: nas-public-temp
+        target: /data
+        volume:
+          nocopy: true
+          subpath: ${VIDYOOP_NAS_SUBPATH:?Set VIDYOOP_NAS_SUBPATH to the isolated media directory}
+
+  pipeline:
+    image: ${VIDYOOP_IMAGE:?Set VIDYOOP_IMAGE to the deployment image}
+    cpuset: ${VIDYOOP_PIPELINE_CPUSET:-0-11}
+    cpus: ${VIDYOOP_PIPELINE_CPUS:-12.0}
+    mem_limit: ${VIDYOOP_PIPELINE_MEMORY:-10g}
+    depends_on:
+      nas-check:
+        condition: service_completed_successfully
+    environment:
+      VIDYOOP_INBOX: /data/inbox
+      VIDYOOP_WORK: /data/work
+      VIDYOOP_LIBRARY: /data/library
+      VIDYOOP_ARCHIVE: /data/archive
+    # Remove inherited host-media mounts instead of adding an additional mount.
+    volumes: !override
+      - *nas-media
+      - catalog-data:/db
+
+volumes:
+  nas-public-temp:
+    name: ${VIDYOOP_NAS_VOLUME:-nas-public-temp}
+    external: true

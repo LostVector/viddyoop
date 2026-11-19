@@ -1,10 +1,13 @@
 # viddyoop Architecture v2
 
-Status: accepted (2026-10-03), revised 2026-11-13. Supersedes the 2014 Hadoop-based architecture.
+Status: accepted (2026-10-03), revised 2026-11-18. Supersedes the 2014 Hadoop-based architecture.
 Step7 is implemented. Step8 recovery gates pass with synthetic media on Linux
-ARM64; step9 host integration and step10 retirement remain in progress.
+ARM64. Step9 is deployed on rk-macstudio with PostgreSQL and an external NAS
+volume; automatic TV import remains deferred. Step10 legacy retirement is pending.
 Test counts below describe the PR #8 checkpoint unless explicitly labeled as
-track-policy follow-up results; the new policy changes await pinned-container CI.
+track-policy follow-up results. PR9's final code passed 137 packaged core tests
+on each Temporal backend in AMD64 CI; see the current
+[Mac Studio deployment guide](deployment-macstudio.md).
 
 The runnable pipeline registers durable submission identities and immutable source
 snapshots, validates media, and uses separate Temporal activity queues for real
@@ -50,9 +53,12 @@ The container trials exposed and fixed SQLite JNI extraction onto a noexec tmpfs
 and missing UID lookup for a numeric-only account. The image now has a named
 UID/GID 1000 account and bounded executable temporary mounts. Actual host iTunes
 behavior remains unverified and is deferred while automatic delivery is disabled.
-Other host sharing/ACL configurations, representative media and operational
-retention policy still need validation. Remote validation is tracked
-in [draft PR #8](https://github.com/LostVector/viddyoop/pull/8/checks); publication
+The Studio now uses a direct Docker CIFS volume for media and local volumes for
+PostgreSQL/catalog data. A full-length dual-HDR source completed and published.
+The operator waived further manual playback tests in favor of production iteration;
+that waiver is not playback evidence. Retention and automatic host delivery remain
+separate work. The earlier checkpoint is tracked
+in [PR #8](https://github.com/LostVector/viddyoop/pull/8/checks); publication
 requires the default-branch gates. Legacy code
 remains until those deployment gates pass. A persistent dev-server volume and
 successful tests do not establish production suitability of that server.
@@ -293,14 +299,16 @@ cover the subsequent subtitle and mastering-validity corrections. Apple's
 AVFoundation recognizes the exported HDR, Dolby Vision and SDR files as playable
 and decodes frames, including the 31-track subtitle sample. After being asked to
 test both clips in TV/iTunes, including audio and subtitle switching, the operator
-reported "seems ok". This accepts the short-excerpt playback gate. Full-length
-playback and operational rollout remain separate gates; no automatic import or
-full-film encode is implied by these short trials.
+reported "seems ok". This accepts the short-excerpt playback gate. Subsequently,
+the full-length Verity job completed on the Mac Studio. The operator waived
+further manual playback validation in favor of deployment and production
+iteration; automatic TV import remains deferred.
 
 The 4K pilot exceeded the disposable VM's original 3 GiB RAM allocation and
-completed with 4 GiB RAM plus 2 GiB swap. Validate deployment memory, overlapping
-stage workloads, throughput and the 24-hour encode activity deadline against
-full-length inputs before operational rollout.
+completed with 4 GiB RAM plus 2 GiB swap. The Studio's 12-CPU/10-GiB worker then
+completed the full-length encode within its 24-hour activity deadline. This is
+one sequential encode measurement; overlapping workloads and higher concurrency
+have not been sized.
 
 ## Why move off Hadoop
 
@@ -741,7 +749,7 @@ separate from these PR checks.
 | Repeated ingest and explicit re-encode | `RunnablePipelineTest`: actual jar discovers once, preserves replacement on conflict, re-encodes under a stable request key, reports status and restarts without duplicate registration; passes in pinned ARM64 suite | Actual host mounts and representative inputs |
 | PR8 checkpoint toolchain | All 126 core tests pass with either backend on Debian ARM64 HandBrake 1.6.1/MKVToolNix 74/FFmpeg 5.1.9/Java 17. All 126 also pass AMD64 container CI against both backends | Representative inputs |
 | PR8 checkpoint codec paths | Packaged pipeline on macOS VirtioFS passes generated 1080p DTS→AAC/AC3, interlaced MPEG-2 TS→progressive H.264, 10-bit HEVC/ASS→H.264/mov_text and silent-video cases. Every output decodes; dimensions/channels/subtitle text and language/duration/cleanup are checked | Actual collection, long duration and sustained resource measurements |
-| HEVC profile and recent NAS excerpts | Pinned 1.11.2 with upstream motion-metric fixes; final AMD64 CI passes all 137 core tests on each backend. ARM64 real excerpts retain Dolby Vision frame RPU or HDR10+, ordered AAC/E-AC-3, source range and prioritized text subtitles. Full decode, Apple AVFoundation frame decode, catalog checksums and one artifact/stat per submission pass. Operator reports the two TV/iTunes clips seem OK | Full-length collection/playback, production memory/throughput and deployment mounts |
+| HEVC profile and NAS deployment | Pinned 1.11.2 with upstream motion-metric fixes; final AMD64 CI passes all 137 core tests on each backend. ARM64 excerpts and the full-length Studio job retain HDR metadata, audio/subtitle policy and committed checksums. PostgreSQL/local catalog volumes and direct CIFS media mounts are in use; one full encode completed in about 12h15m. See the deployment guide for decoder-warning scope | Manual playback waived by operator; automatic import, higher concurrency and operational retention remain separate work |
 | Optional import recovery | Native/container daemon tests pass. Compose synthetic profile also passes on a macOS VirtioFS share: consumed media is confirmed after importer restart and scheduled export refresh, and rejection is observed without redelivery; library unchanged. Native macOS reads private container outputs | Actual recipient app import/rejection/export; other sharing/ACL configurations |
 | Abrupt VM loss during encoding | Forced dedicated Lima VZ guest termination while real HandBrake was active, without a post-acceptance sync or clean service stop. PostgreSQL WAL recovery and Temporal retry complete the same namespace/submission/run with one verified artifact/stat and released scratch; uncertain shared original survives and intake pauses | Representative inputs and deployment storage; physical host power loss is outside this trial |
 | Cold backup/restore | SQLite and full-cluster PostgreSQL drills pass: worker kill, clean persistence shutdown, six-root copy/erase/restore, same submission/run, verified source/output and one stat, released scratch. Guarded PostgreSQL restore retains namespace UUID. SQLite drill also passes with media on macOS VirtioFS | Host app recovery, operational backup retention and upgrade validation |
