@@ -127,7 +127,15 @@ def require_canonical_image(compose, env):
     config = subprocess.run(compose + ['config', '--format', 'json'], env=env, capture_output=True, text=True)
     if config.returncode:
         raise ValueError(config.stderr.strip())
-    image = json.loads(config.stdout)['services']['pipeline']['image']
+    settings = json.loads(config.stdout)
+    image = settings['services']['pipeline']['image']
+    if image == 'invalid://set-viddyoop-image':
+        raise ValueError('Set VIDDYOOP_IMAGE to the corrected deployment image.')
+    media = settings['services']['nas-check']['volumes'][0]['volume']['subpath']
+    if media == '/__SET_VIDDYOOP_NAS_SUBPATH__':
+        raise ValueError('Set VIDDYOOP_NAS_SUBPATH to the isolated media directory.')
+    if settings['secrets']['postgres-password']['file'] == '/__SET_VIDDYOOP_POSTGRES_PASSWORD_FILE__':
+        raise ValueError('Set VIDDYOOP_POSTGRES_PASSWORD_FILE to a private password file.')
     inspect = [compose[0], 'image', 'inspect', image, '--format',
                '{{index .Config.Labels "io.viddyoop.env-prefix"}}']
     result = subprocess.run(inspect, env=env, capture_output=True, text=True)

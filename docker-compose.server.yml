@@ -110,7 +110,7 @@ services:
 
 secrets:
   postgres-password:
-    file: ${VIDDYOOP_POSTGRES_PASSWORD_FILE-${VIDYOOP_POSTGRES_PASSWORD_FILE:?Set VIDDYOOP_POSTGRES_PASSWORD_FILE to a private password file}}
+    file: ${VIDDYOOP_POSTGRES_PASSWORD_FILE:-${VIDYOOP_POSTGRES_PASSWORD_FILE:-/__SET_VIDDYOOP_POSTGRES_PASSWORD_FILE__}}
 
 volumes:
   postgres-data:

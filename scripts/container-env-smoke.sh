@@ -34,6 +34,13 @@ command = ['docker', 'compose', '--env-file', '/dev/null', '-p', 'prefix-config-
 def render(settings):
     return json.loads(subprocess.check_output(command, env={**clean, **settings}, text=True))
 canonical = render(values)
+# Compose 2.38 eagerly expands nested :? checks even when the outer value is set.
+# Required settings use invalid references/absolute subpaths instead of allowing
+# a missing setting to expose the volume root or initialize replacement secrets.
+missing = render({})
+assert missing['services']['nas-check']['image'] == 'invalid://set-viddyoop-image'
+assert missing['services']['pipeline']['volumes'][0]['volume']['subpath'] == '/__SET_VIDDYOOP_NAS_SUBPATH__'
+assert missing['secrets']['postgres-password']['file'] == '/__SET_VIDDYOOP_POSTGRES_PASSWORD_FILE__'
 legacy_values = {k.replace('VIDDYOOP_', 'VIDYOOP_', 1): v for k, v in values.items()}
 assert render(legacy_values) == canonical, 'Legacy .env values resolve differently'
 assert render({**legacy_values, 'VIDYOOP_IMAGE': 'unused:legacy', **values}) == canonical

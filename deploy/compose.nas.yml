@@ -1,8 +1,10 @@
 # Overlay docker-compose.server.yml. Media is mounted by the Linux Docker engine;
 # PostgreSQL and the catalog stay on local Docker volumes.
+# Missing required settings resolve to invalid references/paths, so startup fails
+# closed even on Compose versions that eagerly expand nested required checks.
 services:
   nas-check:
-    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:?Set VIDDYOOP_IMAGE to the deployment image}}
+    image: ${VIDDYOOP_IMAGE:-${VIDYOOP_IMAGE:-invalid://set-viddyoop-image}}
     cpus: 0.25
     mem_limit: 64m
     read_only: true
@@ -37,10 +39,10 @@ services:
         target: /data
         volume:
           nocopy: true
-          subpath: ${VIDDYOOP_NAS_SUBPATH-${VIDYOOP_NAS_SUBPATH:?Set VIDDYOOP_NAS_SUBPATH to the isolated media directory}}
+          subpath: ${VIDDYOOP_NAS_SUBPATH:-${VIDYOOP_NAS_SUBPATH:-/__SET_VIDDYOOP_NAS_SUBPATH__}}
 
   pipeline:
-    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:?Set VIDDYOOP_IMAGE to the deployment image}}
+    image: ${VIDDYOOP_IMAGE:-${VIDYOOP_IMAGE:-invalid://set-viddyoop-image}}
     cpuset: ${VIDDYOOP_PIPELINE_CPUSET-${VIDYOOP_PIPELINE_CPUSET:-0-11}}
     cpus: ${VIDDYOOP_PIPELINE_CPUS-${VIDYOOP_PIPELINE_CPUS:-12.0}}
     mem_limit: ${VIDDYOOP_PIPELINE_MEMORY-${VIDYOOP_PIPELINE_MEMORY:-10g}}
