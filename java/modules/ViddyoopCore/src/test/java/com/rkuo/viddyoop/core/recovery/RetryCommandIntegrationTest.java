@@ -89,7 +89,7 @@ public class RetryCommandIntegrationTest {
         if (preview) command.add("--dry-run");
         Path out = root.resolve(label + ".json"), err = root.resolve(label + ".log");
         var builder = new ProcessBuilder(command).redirectOutput(out.toFile()).redirectError(err.toFile());
-        builder.environment().keySet().removeIf(key -> key.startsWith("VIDYOOP_"));
+        builder.environment().keySet().removeIf(key -> key.startsWith("VIDDYOOP_"));
         var process = builder.start();
         try {
             Assert.assertTrue("CLI retry timed out", process.waitFor(20, TimeUnit.SECONDS));

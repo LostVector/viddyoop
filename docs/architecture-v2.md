@@ -353,7 +353,7 @@ inbox ──▶ pipeline worker ──▶ library/ ──▶ itunes-import ─�
      HandBrake directly produces AC3 surround tracks from DTS/other codecs,
      avoiding the legacy dcadec/aften intermediate conversion.
      Encode activities use a dedicated task queue and worker limit
-     (`VIDYOOP_ENCODE_WORKERS`); preprocessing has a separate limit.
+     (`VIDDYOOP_ENCODE_WORKERS`); preprocessing has a separate limit.
      Admission also checks scratch-space capacity; CPU limits alone are
      insufficient when remuxes and encodes overlap.
      Before staging, include the snapshot's bytes as well as the workflow
@@ -553,7 +553,7 @@ CREATE TABLE encode_stats(        -- written by the publish activity
 
 All tool binaries (handbrake-cli, mkvtoolnix, ffmpeg) are installed in
 the image at fixed paths — path configuration disappears from config files.
-Remaining knobs are env vars (`VIDYOOP_ENCODE_WORKERS`, archive policy, etc.).
+Remaining knobs are env vars (`VIDDYOOP_ENCODE_WORKERS`, archive policy, etc.).
 
 ### Operations
 
