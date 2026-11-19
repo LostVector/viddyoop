@@ -55,7 +55,7 @@ public class ItunesImportDaemonTest {
     }
     private static Process launch(List<String> command,Path log)throws Exception{
         var builder=new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile());
-        builder.environment().keySet().removeIf(key->key.startsWith("VIDYOOP_"));
+        builder.environment().keySet().removeIf(key->key.startsWith("VIDDYOOP_"));
         return builder.start();
     }
 

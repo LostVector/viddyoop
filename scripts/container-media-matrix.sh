@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 matrix_compose="$PWD/docker-compose.yml"
-export VIDYOOP_IMAGE="${1:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${1:-viddyoop:test}"
 if [ "$#" -ge 2 ]; then
   mkdir -p "$(dirname "$2")"
   mkdir "$2"
@@ -13,16 +13,16 @@ else
 fi
 matrix_root="$(mktemp -d "${TMPDIR:-/tmp}/viddyoop-media-matrix.XXXXXX")"
 matrix_project="viddyoop-media-$$"
-export VIDYOOP_INBOX_DIR="$matrix_root/inbox" VIDYOOP_LIBRARY_DIR="$matrix_root/library" VIDYOOP_ARCHIVE_DIR="$matrix_root/archive"
-export VIDYOOP_MIN_FREE_BYTES=0 VIDYOOP_SETTLE_MS=1000 VIDYOOP_POLL_MS=100 VIDYOOP_ARCHIVE_POLICY=none
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0 VIDYOOP_NAMESPACE=default
+export VIDDYOOP_INBOX_DIR="$matrix_root/inbox" VIDDYOOP_LIBRARY_DIR="$matrix_root/library" VIDDYOOP_ARCHIVE_DIR="$matrix_root/archive"
+export VIDDYOOP_MIN_FREE_BYTES=0 VIDDYOOP_SETTLE_MS=1000 VIDDYOOP_POLL_MS=100 VIDDYOOP_ARCHIVE_POLICY=none
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0 VIDDYOOP_NAMESPACE=default
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$matrix_compose" -p "$matrix_project" "$@"; }
 cleanup() {
   result=$?
   compose logs --no-color > "$matrix_results/services.log" || result=1
   compose down --volumes --remove-orphans || result=1
   docker run --rm --network none --read-only --user 0 --mount "type=bind,src=$matrix_root,dst=/cleanup" \
-    --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
+    --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
   rm -rf "$matrix_root" || result=1
   echo "Media matrix reports retained at $matrix_results"
   exit "$result"
@@ -33,12 +33,12 @@ mkdir "$matrix_root/inbox" "$matrix_root/library" "$matrix_root/archive"
 chmod 0777 "$matrix_root/inbox" "$matrix_root/library" "$matrix_root/archive"
 media_ffmpeg() {
   docker run --rm --network none --cpus 1 --memory 512m \
-    --mount "type=bind,src=$matrix_root,dst=/data" --entrypoint ffmpeg "$VIDYOOP_IMAGE" \
+    --mount "type=bind,src=$matrix_root,dst=/data" --entrypoint ffmpeg "$VIDDYOOP_IMAGE" \
     -hide_banner -loglevel error -threads 1 -filter_threads 1 "$@"
 }
 media_probe() {
   docker run --rm --network none --read-only --mount "type=bind,src=$matrix_root,dst=/data,readonly" \
-    --entrypoint ffprobe "$VIDYOOP_IMAGE" -v error -show_streams -show_format -of json "$1"
+    --entrypoint ffprobe "$VIDDYOOP_IMAGE" -v error -show_streams -show_format -of json "$1"
 }
 cat > "$matrix_root/subtitle.ass" <<'ASS'
 [Script Info]
@@ -62,7 +62,7 @@ media_ffmpeg -f lavfi -i testsrc2=size=1280x720:rate=24 -f lavfi -i anullsrc=cha
 for fixture in hd-dts.mkv transport.ts hevc-ass.mkv; do
   media_probe "/data/inbox/$fixture" > "$matrix_results/source-$fixture.json"
 done
-docker image inspect "$VIDYOOP_IMAGE" > "$matrix_results/images.json"
+docker image inspect "$VIDDYOOP_IMAGE" > "$matrix_results/images.json"
 compose up -d --no-build --wait --wait-timeout 120 temporal pipeline
 compose config --format json > "$matrix_results/compose.json"
 completed=false
@@ -89,7 +89,7 @@ for name in hd-dts transport hevc-ass; do
   test -f "$matrix_root/library/$name.mp4"
   media_probe "/data/library/$name.mp4" > "$matrix_results/output-$name.json"
   docker run --rm --network none --read-only --mount "type=bind,src=$matrix_root,dst=/data,readonly" \
-    --entrypoint ffprobe "$VIDYOOP_IMAGE" -v error -select_streams v:0 -read_intervals '%+#8' \
+    --entrypoint ffprobe "$VIDDYOOP_IMAGE" -v error -select_streams v:0 -read_intervals '%+#8' \
     -show_frames -show_entries frame=interlaced_frame -of json "/data/library/$name.mp4" > "$matrix_results/frames-$name.json"
   media_ffmpeg -i "/data/library/$name.mp4" -map 0:v -map '0:a?' -f null -
 done

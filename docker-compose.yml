@@ -1,14 +1,14 @@
 # Local single-node deployment. iTunes indexing/import are separate opt-in profiles.
 services:
   temporal:
-    cpus: ${VIDYOOP_TEMPORAL_CPUS:-1.0}
-    mem_limit: ${VIDYOOP_TEMPORAL_MEMORY:-1g}
+    cpus: ${VIDDYOOP_TEMPORAL_CPUS-${VIDYOOP_TEMPORAL_CPUS:-1.0}}
+    mem_limit: ${VIDDYOOP_TEMPORAL_MEMORY-${VIDYOOP_TEMPORAL_MEMORY:-1g}}
     image: temporalio/temporal:1.10.0@sha256:003508da05989e7cf0d583cfce521c4bb2732e733574e3040db8f1284783baa2
     entrypoint: ["temporal"]
     command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
     ports:
-      - "127.0.0.1:${VIDYOOP_TEMPORAL_PORT:-7233}:7233"
-      - "127.0.0.1:${VIDYOOP_TEMPORAL_UI_PORT:-8233}:8233"
+      - "127.0.0.1:${VIDDYOOP_TEMPORAL_PORT-${VIDYOOP_TEMPORAL_PORT:-7233}}:7233"
+      - "127.0.0.1:${VIDDYOOP_TEMPORAL_UI_PORT-${VIDYOOP_TEMPORAL_UI_PORT:-8233}}:8233"
     volumes:
       - temporal-data:/home/temporal
     healthcheck:
@@ -19,32 +19,32 @@ services:
     restart: unless-stopped
 
   pipeline:
-    cpus: ${VIDYOOP_PIPELINE_CPUS:-2.0}
-    mem_limit: ${VIDYOOP_PIPELINE_MEMORY:-4g}
-    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    cpus: ${VIDDYOOP_PIPELINE_CPUS-${VIDYOOP_PIPELINE_CPUS:-2.0}}
+    mem_limit: ${VIDDYOOP_PIPELINE_MEMORY-${VIDYOOP_PIPELINE_MEMORY:-4g}}
+    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}}
     build: .
     init: true
     depends_on:
       temporal:
         condition: service_healthy
     environment:
-      JAVA_TOOL_OPTIONS: ${VIDYOOP_PIPELINE_JAVA_OPTIONS:--Xmx512m}
-      VIDYOOP_TEMPORAL: temporal:7233
-      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
-      VIDYOOP_PROFILE: ${VIDYOOP_PROFILE:-apple-tv-hevc-v1}
-      VIDYOOP_ENCODE_WORKERS: ${VIDYOOP_ENCODE_WORKERS:-1}
-      VIDYOOP_PREPROCESS_WORKERS: ${VIDYOOP_PREPROCESS_WORKERS:-1}
-      VIDYOOP_PUBLISH_WORKERS: ${VIDYOOP_PUBLISH_WORKERS:-1}
-      VIDYOOP_MIN_FREE_BYTES: ${VIDYOOP_MIN_FREE_BYTES:-10737418240}
-      VIDYOOP_SETTLE_MS: ${VIDYOOP_SETTLE_MS:-60000}
-      VIDYOOP_POLL_MS: ${VIDYOOP_POLL_MS:-5000}
-      VIDYOOP_SCRATCH_MULTIPLIER: ${VIDYOOP_SCRATCH_MULTIPLIER:-4}
-      VIDYOOP_ARCHIVE_POLICY: ${VIDYOOP_ARCHIVE_POLICY:-movies}
+      JAVA_TOOL_OPTIONS: ${VIDDYOOP_PIPELINE_JAVA_OPTIONS-${VIDYOOP_PIPELINE_JAVA_OPTIONS:--Xmx512m}}
+      VIDDYOOP_TEMPORAL: temporal:7233
+      VIDDYOOP_NAMESPACE: ${VIDDYOOP_NAMESPACE-${VIDYOOP_NAMESPACE:-default}}
+      VIDDYOOP_PROFILE: ${VIDDYOOP_PROFILE-${VIDYOOP_PROFILE:-apple-tv-hevc-v1}}
+      VIDDYOOP_ENCODE_WORKERS: ${VIDDYOOP_ENCODE_WORKERS-${VIDYOOP_ENCODE_WORKERS:-1}}
+      VIDDYOOP_PREPROCESS_WORKERS: ${VIDDYOOP_PREPROCESS_WORKERS-${VIDYOOP_PREPROCESS_WORKERS:-1}}
+      VIDDYOOP_PUBLISH_WORKERS: ${VIDDYOOP_PUBLISH_WORKERS-${VIDYOOP_PUBLISH_WORKERS:-1}}
+      VIDDYOOP_MIN_FREE_BYTES: ${VIDDYOOP_MIN_FREE_BYTES-${VIDYOOP_MIN_FREE_BYTES:-10737418240}}
+      VIDDYOOP_SETTLE_MS: ${VIDDYOOP_SETTLE_MS-${VIDYOOP_SETTLE_MS:-60000}}
+      VIDDYOOP_POLL_MS: ${VIDDYOOP_POLL_MS-${VIDYOOP_POLL_MS:-5000}}
+      VIDDYOOP_SCRATCH_MULTIPLIER: ${VIDDYOOP_SCRATCH_MULTIPLIER-${VIDYOOP_SCRATCH_MULTIPLIER:-4}}
+      VIDDYOOP_ARCHIVE_POLICY: ${VIDDYOOP_ARCHIVE_POLICY-${VIDYOOP_ARCHIVE_POLICY:-movies}}
     volumes:
-      - ${VIDYOOP_INBOX_DIR:-./local/inbox}:/inbox
+      - ${VIDDYOOP_INBOX_DIR-${VIDYOOP_INBOX_DIR:-./local/inbox}}:/inbox
       - work-data:/work
-      - ${VIDYOOP_LIBRARY_DIR:-./local/library}:/library
-      - ${VIDYOOP_ARCHIVE_DIR:-./local/archive}:/archive
+      - ${VIDDYOOP_LIBRARY_DIR-${VIDYOOP_LIBRARY_DIR:-./local/library}}:/library
+      - ${VIDDYOOP_ARCHIVE_DIR-${VIDYOOP_ARCHIVE_DIR:-./local/archive}}:/archive
       - catalog-data:/db
     read_only: true
     tmpfs:
@@ -53,25 +53,25 @@ services:
     restart: unless-stopped
 
   itunes-index:
-    cpus: ${VIDYOOP_ITUNES_INDEX_CPUS:-0.5}
-    mem_limit: ${VIDYOOP_ITUNES_INDEX_MEMORY:-512m}
+    cpus: ${VIDDYOOP_ITUNES_INDEX_CPUS-${VIDYOOP_ITUNES_INDEX_CPUS:-0.5}}
+    mem_limit: ${VIDDYOOP_ITUNES_INDEX_MEMORY-${VIDYOOP_ITUNES_INDEX_MEMORY:-512m}}
     profiles: [itunes, itunes-import]
-    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}}
     build: .
-    command: ["itunes-index", "--serve", "--interval-minutes", "${VIDYOOP_ITUNES_INDEX_INTERVAL_MINUTES:-15}"]
+    command: ["itunes-index", "--serve", "--interval-minutes", "${VIDDYOOP_ITUNES_INDEX_INTERVAL_MINUTES-${VIDYOOP_ITUNES_INDEX_INTERVAL_MINUTES:-15}}"]
     init: true
     depends_on:
       temporal:
         condition: service_healthy
     environment:
-      JAVA_TOOL_OPTIONS: ${VIDYOOP_ITUNES_INDEX_JAVA_OPTIONS:--Xmx128m}
-      VIDYOOP_TEMPORAL: temporal:7233
-      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
-      VIDYOOP_ITUNES_XML: /itunes-lib/${VIDYOOP_ITUNES_XML_NAME:-iTunes Library.xml}
+      JAVA_TOOL_OPTIONS: ${VIDDYOOP_ITUNES_INDEX_JAVA_OPTIONS-${VIDYOOP_ITUNES_INDEX_JAVA_OPTIONS:--Xmx128m}}
+      VIDDYOOP_TEMPORAL: temporal:7233
+      VIDDYOOP_NAMESPACE: ${VIDDYOOP_NAMESPACE-${VIDYOOP_NAMESPACE:-default}}
+      VIDDYOOP_ITUNES_XML: /itunes-lib/${VIDDYOOP_ITUNES_XML_NAME-${VIDYOOP_ITUNES_XML_NAME:-iTunes Library.xml}}
     volumes:
       - catalog-data:/db
       - type: bind
-        source: ${VIDYOOP_ITUNES_LIBRARY_DIR:-./local/itunes}
+        source: ${VIDDYOOP_ITUNES_LIBRARY_DIR-${VIDYOOP_ITUNES_LIBRARY_DIR:-./local/itunes}}
         target: /itunes-lib
         read_only: true
         bind:
@@ -85,12 +85,12 @@ services:
     restart: unless-stopped
 
   itunes-import:
-    cpus: ${VIDYOOP_ITUNES_IMPORT_CPUS:-0.5}
-    mem_limit: ${VIDYOOP_ITUNES_IMPORT_MEMORY:-1g}
+    cpus: ${VIDDYOOP_ITUNES_IMPORT_CPUS-${VIDYOOP_ITUNES_IMPORT_CPUS:-0.5}}
+    mem_limit: ${VIDDYOOP_ITUNES_IMPORT_MEMORY-${VIDYOOP_ITUNES_IMPORT_MEMORY:-1g}}
     profiles: [itunes-import]
-    image: ${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}
+    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:-ghcr.io/lostvector/viddyoop:local}}
     build: .
-    command: ["itunes-import", "--serve", "--reconcile-only=${VIDYOOP_ITUNES_RECONCILE_ONLY:-false}"]
+    command: ["itunes-import", "--serve", "--reconcile-only=${VIDDYOOP_ITUNES_RECONCILE_ONLY-${VIDYOOP_ITUNES_RECONCILE_ONLY:-false}}"]
     init: true
     depends_on:
       temporal:
@@ -100,31 +100,31 @@ services:
       itunes-index:
         condition: service_started
     environment:
-      JAVA_TOOL_OPTIONS: ${VIDYOOP_ITUNES_IMPORT_JAVA_OPTIONS:--Xmx256m}
-      VIDYOOP_TEMPORAL: temporal:7233
-      VIDYOOP_NAMESPACE: ${VIDYOOP_NAMESPACE:-default}
-      VIDYOOP_ITUNES_ADD: /itunes-delivery/${VIDYOOP_ITUNES_ADD_NAME:-Automatically Add to iTunes.localized}
-      VIDYOOP_ITUNES_STAGING: /itunes-delivery/.viddyoop-staging
-      VIDYOOP_ITUNES_HOST_MEDIA_ROOT: ${VIDYOOP_ITUNES_HOST_MEDIA_ROOT:-}
-      VIDYOOP_ITUNES_MEDIA_ROOT: /itunes-media
-      VIDYOOP_ITUNES_REJECTED: ${VIDYOOP_ITUNES_REJECTED:-}
-      VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS: ${VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS:-60}
-      VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS: ${VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS:-10}
+      JAVA_TOOL_OPTIONS: ${VIDDYOOP_ITUNES_IMPORT_JAVA_OPTIONS-${VIDYOOP_ITUNES_IMPORT_JAVA_OPTIONS:--Xmx256m}}
+      VIDDYOOP_TEMPORAL: temporal:7233
+      VIDDYOOP_NAMESPACE: ${VIDDYOOP_NAMESPACE-${VIDYOOP_NAMESPACE:-default}}
+      VIDDYOOP_ITUNES_ADD: /itunes-delivery/${VIDDYOOP_ITUNES_ADD_NAME-${VIDYOOP_ITUNES_ADD_NAME:-Automatically Add to iTunes.localized}}
+      VIDDYOOP_ITUNES_STAGING: /itunes-delivery/.viddyoop-staging
+      VIDDYOOP_ITUNES_HOST_MEDIA_ROOT: ${VIDDYOOP_ITUNES_HOST_MEDIA_ROOT-${VIDYOOP_ITUNES_HOST_MEDIA_ROOT:-}}
+      VIDDYOOP_ITUNES_MEDIA_ROOT: /itunes-media
+      VIDDYOOP_ITUNES_REJECTED: ${VIDDYOOP_ITUNES_REJECTED-${VIDYOOP_ITUNES_REJECTED:-}}
+      VIDDYOOP_ITUNES_IMPORT_CHECK_SECONDS: ${VIDDYOOP_ITUNES_IMPORT_CHECK_SECONDS-${VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS:-60}}
+      VIDDYOOP_ITUNES_IMPORT_SCAN_SECONDS: ${VIDDYOOP_ITUNES_IMPORT_SCAN_SECONDS-${VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS:-10}}
     volumes:
       - catalog-data:/db
       - type: bind
-        source: ${VIDYOOP_LIBRARY_DIR:-./local/library}
+        source: ${VIDDYOOP_LIBRARY_DIR-${VIDYOOP_LIBRARY_DIR:-./local/library}}
         target: /library
         read_only: true
         bind:
           create_host_path: false
       - type: bind
-        source: ${VIDYOOP_ITUNES_DELIVERY_DIR:-./local/itunes-delivery}
+        source: ${VIDDYOOP_ITUNES_DELIVERY_DIR-${VIDYOOP_ITUNES_DELIVERY_DIR:-./local/itunes-delivery}}
         target: /itunes-delivery
         bind:
           create_host_path: false
       - type: bind
-        source: ${VIDYOOP_ITUNES_MEDIA_DIR:-./local/itunes-media}
+        source: ${VIDDYOOP_ITUNES_MEDIA_DIR-${VIDYOOP_ITUNES_MEDIA_DIR:-./local/itunes-media}}
         target: /itunes-media
         read_only: true
         bind:

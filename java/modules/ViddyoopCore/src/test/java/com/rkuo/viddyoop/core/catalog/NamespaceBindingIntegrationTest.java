@@ -36,7 +36,7 @@ public class NamespaceBindingIntegrationTest {
             var command=new ArrayList<>(List.of(Path.of(System.getProperty("java.home"),"bin/java").toString(),"-jar",jar));
             command.addAll(args);command.addAll(List.of("--database",db.toString(),"--temporal",target));
             var builder=new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile());
-            builder.environment().keySet().removeIf(key->key.startsWith("VIDYOOP_"));
+            builder.environment().keySet().removeIf(key->key.startsWith("VIDDYOOP_"));
             Process process=builder.start();
             try {
                 Assert.assertTrue("Worker stayed alive: "+Files.readString(log),process.waitFor(20,TimeUnit.SECONDS));

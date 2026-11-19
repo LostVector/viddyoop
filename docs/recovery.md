@@ -140,7 +140,7 @@ the Viddyoop backup; rolling back its receipt cannot undo that external effect.
    request identity and output name instead.
 6. Refresh the host XML export and re-index it. Keep import in observation-only
    mode: native `itunes-import --reconcile-only --submission ID` or `--serve`, or
-   Compose `VIDYOOP_ITUNES_RECONCILE_ONLY=true`. This permits receipt preparation
+   Compose `VIDDYOOP_ITUNES_RECONCILE_ONLY=true`. This permits receipt preparation
    and positive confirmation/rejection checks but never publishes a new watched
    copy, even when the backup lacks its transfer receipt. This still writes catalog
    observations; `status` remains the read-only inspection command.

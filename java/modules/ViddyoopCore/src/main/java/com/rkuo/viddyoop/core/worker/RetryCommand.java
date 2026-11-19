@@ -13,9 +13,9 @@ import picocli.CommandLine.*;
 @Command(name="retry", mixinStandardHelpOptions=true,
         description="Resume a failed pipeline at its failed activity after repair; completed stages replay from history.")
 public final class RetryCommand implements Callable<Integer> {
-    @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-    @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-    @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
+    @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+    @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+    @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
     @Option(names="--submission", required=true) String submission;
     @Option(names="--run-id", required=true, description="Failed current run ID from Temporal; prevents retrying stale history.") String runId;
     @Option(names="--reason", required=true) String reason;
@@ -46,5 +46,5 @@ public final class RetryCommand implements Callable<Integer> {
             return 0;
         } finally { service.shutdownNow(); }
     }
-    private static String env(String name, String fallback) { return System.getenv().getOrDefault(name, fallback); }
+    private static String env(String name, String fallback) { return EnvironmentVariables.get(name, fallback); }
 }

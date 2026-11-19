@@ -14,21 +14,21 @@ import picocli.CommandLine.*;
 @Command(name="itunes-import", mixinStandardHelpOptions=true,
         description="Deliver/reconcile one committed artifact, or run the Temporal import worker.")
 public final class ItunesImportCommand implements Callable<Integer> {
-    @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-    @Option(names="--library") Path library = Path.of(env("VIDYOOP_LIBRARY", "/library"));
-    @Option(names="--add-folder") Path watched = Path.of(env("VIDYOOP_ITUNES_ADD", "/itunes-delivery/Automatically Add to iTunes.localized"));
-    @Option(names="--staging") Path staging = Path.of(env("VIDYOOP_ITUNES_STAGING", "/itunes-delivery/.viddyoop-staging"));
-    @Option(names="--host-media-root") Path hostMedia = optional("VIDYOOP_ITUNES_HOST_MEDIA_ROOT");
-    @Option(names="--media-root") Path mountedMedia = optional("VIDYOOP_ITUNES_MEDIA_ROOT");
-    @Option(names="--rejected-folder") Path rejected = optional("VIDYOOP_ITUNES_REJECTED");
+    @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+    @Option(names="--library") Path library = Path.of(env("VIDDYOOP_LIBRARY", "/library"));
+    @Option(names="--add-folder") Path watched = Path.of(env("VIDDYOOP_ITUNES_ADD", "/itunes-delivery/Automatically Add to iTunes.localized"));
+    @Option(names="--staging") Path staging = Path.of(env("VIDDYOOP_ITUNES_STAGING", "/itunes-delivery/.viddyoop-staging"));
+    @Option(names="--host-media-root") Path hostMedia = optional("VIDDYOOP_ITUNES_HOST_MEDIA_ROOT");
+    @Option(names="--media-root") Path mountedMedia = optional("VIDDYOOP_ITUNES_MEDIA_ROOT");
+    @Option(names="--rejected-folder") Path rejected = optional("VIDDYOOP_ITUNES_REJECTED");
     @Option(names="--submission") String submission;
     @Option(names="--serve") boolean serve;
     @Option(names="--reconcile-only", description="Observe/repair receipts without publishing a new watched copy (use after restore).") boolean reconcileOnly;
-    @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-    @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
-    @Option(names="--queue") String queue = env("VIDYOOP_ITUNES_IMPORT_QUEUE", "viddyoop-itunes-import");
-    @Option(names="--check-seconds") int checkSeconds = Integer.parseInt(env("VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS", "60"));
-    @Option(names="--scan-seconds") int scanSeconds = Integer.parseInt(env("VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS", "10"));
+    @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+    @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
+    @Option(names="--queue") String queue = env("VIDDYOOP_ITUNES_IMPORT_QUEUE", "viddyoop-itunes-import");
+    @Option(names="--check-seconds") int checkSeconds = Integer.parseInt(env("VIDDYOOP_ITUNES_IMPORT_CHECK_SECONDS", "60"));
+    @Option(names="--scan-seconds") int scanSeconds = Integer.parseInt(env("VIDDYOOP_ITUNES_IMPORT_SCAN_SECONDS", "10"));
     @Spec Model.CommandSpec spec;
 
     @Override public Integer call() throws Exception {
@@ -96,8 +96,8 @@ public final class ItunesImportCommand implements Callable<Integer> {
             }
         }
     }
-    private static String env(String name, String fallback) { return System.getenv().getOrDefault(name, fallback); }
+    private static String env(String name, String fallback) { return EnvironmentVariables.get(name, fallback); }
     private static Path optional(String name) {
-        String value = System.getenv(name); return value == null || value.isBlank() ? null : Path.of(value);
+        String value = env(name, null); return value == null || value.isBlank() ? null : Path.of(value);
     }
 }

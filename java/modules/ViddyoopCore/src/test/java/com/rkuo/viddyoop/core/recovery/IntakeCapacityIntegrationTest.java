@@ -31,7 +31,7 @@ public class IntakeCapacityIntegrationTest {
                     "--settle-ms","0","--poll-ms","100","--min-free-bytes",Long.toString(floor),
                     "--handbrake",root.resolve("media-tool-must-not-run").toString());
             var builder=new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile());
-            builder.environment().keySet().removeIf(key->key.startsWith("VIDYOOP_"));
+            builder.environment().keySet().removeIf(key->key.startsWith("VIDDYOOP_"));
             worker=builder.start();
             long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(30);boolean deferred=false;
             while(System.nanoTime()<deadline) {

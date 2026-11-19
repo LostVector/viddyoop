@@ -59,13 +59,14 @@ RUN ldd /usr/bin/HandBrakeCLI > /tmp/handbrake-libraries \
     && rm /tmp/handbrake-version /tmp/handbrake-libraries
 LABEL io.viddyoop.handbrake.version="${HANDBRAKE_VERSION}"
 LABEL io.viddyoop.handbrake.patches="c81f57ce59d65bbfce94a3473bc53e224c9350cd,c23c4f717d5fcee6db6561d6bfd6d3479adfb709"
+LABEL io.viddyoop.env-prefix="VIDDYOOP_"
 COPY --from=build /src/java/modules/ViddyoopCore/target/viddyoop-core-1.0.0-SNAPSHOT.jar /app/viddyoop.jar
+COPY --chmod=0755 scripts/entrypoint.sh /usr/local/bin/viddyoop
 WORKDIR /app
 USER 1000:1000
-ENV VIDYOOP_TEMPORAL=temporal:7233
-ENTRYPOINT ["java", "-jar", "/app/viddyoop.jar"]
+ENTRYPOINT ["/usr/local/bin/viddyoop"]
 CMD ["pipeline"]
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD ["java", "-jar", "/app/viddyoop.jar", "health"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD ["/usr/local/bin/viddyoop", "health"]
 
 # Opt-in test tooling layered onto the actual runtime/media packages. Never published.
 FROM runtime AS verification

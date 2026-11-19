@@ -59,7 +59,7 @@ The Studio uses Docker 29.9.3 and Compose 5.7.0.
    python3 scripts/deploy.py init
    ```
 
-   Edit `local/macstudio.env`. Set `VIDYOOP_IMAGE` to an immutable registry digest
+   Edit `local/macstudio.env`. Set `VIDDYOOP_IMAGE` to an immutable registry digest
    or CI `sha-<commit>` tag, and verify the NAS volume/subpath. For an existing
    deployment, preserve its original PostgreSQL password, namespace and Compose
    project. Do not initialize a replacement password for an existing database.
@@ -74,9 +74,9 @@ The Studio uses Docker 29.9.3 and Compose 5.7.0.
 
 The helper uses a separate Docker CLI configuration for public image pulls over
 SSH without unlocking the login Keychain or changing the user's Docker settings.
-On macOS it finds Docker Desktop's CLI/socket; `VIDYOOP_DOCKER_BIN` and
+On macOS it finds Docker Desktop's CLI/socket; `VIDDYOOP_DOCKER_BIN` and
 `DOCKER_HOST` can select another engine. For a private registry, set
-`VIDYOOP_DOCKER_CONFIG` to a separate configuration already authenticated for
+`VIDDYOOP_DOCKER_CONFIG` to a separate configuration already authenticated for
 unattended pulls. Secrets are generated inside a private
 local directory and never printed. `init` refuses to overwrite configuration or
 rotate an existing password.
@@ -89,6 +89,20 @@ Studio. Keep the existing verified local image until a new release has passed
 publication and deployment checks.
 
 ## Operating commands
+
+Environment names use `VIDDYOOP_`. The earlier `VIDYOOP_` spelling is accepted as a
+fallback during upgrades. To rename an existing env file without changing its
+values, namespace, password path or image pin:
+
+```sh
+python3 scripts/deploy.py --env-file /absolute/deployment.env migrate-env
+```
+
+The command keeps a private backup, is a no-op when already migrated, and refuses
+conflicting canonical/legacy keys. The corrected image resolves both spellings;
+canonical names take precedence. The helper refuses `up` with an older image that
+cannot read canonical container variables, leaving the running deployment intact.
+Pin the corrected release image before restarting with this Compose revision.
 
 ```sh
 python3 scripts/deploy.py --env-file /absolute/deployment.env config

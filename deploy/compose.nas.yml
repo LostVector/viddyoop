@@ -2,7 +2,7 @@
 # PostgreSQL and the catalog stay on local Docker volumes.
 services:
   nas-check:
-    image: ${VIDYOOP_IMAGE:?Set VIDYOOP_IMAGE to the deployment image}
+    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:?Set VIDDYOOP_IMAGE to the deployment image}}
     cpus: 0.25
     mem_limit: 64m
     read_only: true
@@ -37,21 +37,21 @@ services:
         target: /data
         volume:
           nocopy: true
-          subpath: ${VIDYOOP_NAS_SUBPATH:?Set VIDYOOP_NAS_SUBPATH to the isolated media directory}
+          subpath: ${VIDDYOOP_NAS_SUBPATH-${VIDYOOP_NAS_SUBPATH:?Set VIDDYOOP_NAS_SUBPATH to the isolated media directory}}
 
   pipeline:
-    image: ${VIDYOOP_IMAGE:?Set VIDYOOP_IMAGE to the deployment image}
-    cpuset: ${VIDYOOP_PIPELINE_CPUSET:-0-11}
-    cpus: ${VIDYOOP_PIPELINE_CPUS:-12.0}
-    mem_limit: ${VIDYOOP_PIPELINE_MEMORY:-10g}
+    image: ${VIDDYOOP_IMAGE-${VIDYOOP_IMAGE:?Set VIDDYOOP_IMAGE to the deployment image}}
+    cpuset: ${VIDDYOOP_PIPELINE_CPUSET-${VIDYOOP_PIPELINE_CPUSET:-0-11}}
+    cpus: ${VIDDYOOP_PIPELINE_CPUS-${VIDYOOP_PIPELINE_CPUS:-12.0}}
+    mem_limit: ${VIDDYOOP_PIPELINE_MEMORY-${VIDYOOP_PIPELINE_MEMORY:-10g}}
     depends_on:
       nas-check:
         condition: service_completed_successfully
     environment:
-      VIDYOOP_INBOX: /data/inbox
-      VIDYOOP_WORK: /data/work
-      VIDYOOP_LIBRARY: /data/library
-      VIDYOOP_ARCHIVE: /data/archive
+      VIDDYOOP_INBOX: /data/inbox
+      VIDDYOOP_WORK: /data/work
+      VIDDYOOP_LIBRARY: /data/library
+      VIDDYOOP_ARCHIVE: /data/archive
     # Remove inherited host-media mounts instead of adding an additional mount.
     volumes: !override
       - *nas-media
@@ -59,5 +59,5 @@ services:
 
 volumes:
   nas-public-temp:
-    name: ${VIDYOOP_NAS_VOLUME:-nas-public-temp}
+    name: ${VIDDYOOP_NAS_VOLUME-${VIDYOOP_NAS_VOLUME:-nas-public-temp}}
     external: true

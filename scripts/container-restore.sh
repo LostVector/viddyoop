@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 restore_compose="$PWD/docker-compose.yml"
-export VIDYOOP_IMAGE="${1:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${1:-viddyoop:test}"
 restore_verification="${2:-viddyoop:verification}"
 restore_mode="${4:-dev}"
 case "$restore_mode" in
@@ -20,8 +20,8 @@ fi
 restore_root="$(mktemp -d "${TMPDIR:-/tmp}/viddyoop-container-restore.XXXXXX")"
 restore_project="viddyoop-restore-$$"
 restore_override="$restore_root/override.yaml"
-export VIDYOOP_INBOX_DIR="$restore_root/inbox" VIDYOOP_LIBRARY_DIR="$restore_root/library" VIDYOOP_ARCHIVE_DIR="$restore_root/archive"
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0 VIDYOOP_NAMESPACE=default
+export VIDDYOOP_INBOX_DIR="$restore_root/inbox" VIDDYOOP_LIBRARY_DIR="$restore_root/library" VIDDYOOP_ARCHIVE_DIR="$restore_root/archive"
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0 VIDDYOOP_NAMESPACE=default
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$restore_compose" -f "$restore_override" -p "$restore_project" "$@"; }
 cleanup() {
   result=$?
@@ -29,7 +29,7 @@ cleanup() {
   compose down --volumes --remove-orphans || result=1
   docker run --rm --network none --read-only --user 0 \
     --mount "type=bind,src=$restore_root,dst=/cleanup" \
-    --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
+    --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
   rm -rf "$restore_root" || result=1
   echo "Restore evidence retained at $restore_results"
   exit "$result"
@@ -37,9 +37,9 @@ cleanup() {
 trap cleanup EXIT
 chmod 0755 "$restore_root" "$restore_results"
 if [ "$restore_mode" = server ]; then
-  export VIDYOOP_POSTGRES_PASSWORD_FILE="$restore_root/postgres-password"
-  python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDYOOP_POSTGRES_PASSWORD_FILE"
-  chmod 0444 "$VIDYOOP_POSTGRES_PASSWORD_FILE"
+  export VIDDYOOP_POSTGRES_PASSWORD_FILE="$restore_root/postgres-password"
+  python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
+  chmod 0444 "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
 fi
 mkdir "$restore_root/inbox" "$restore_root/library" "$restore_root/archive" "$restore_root/quarantine" "$restore_root/fixtures"
 chmod 0777 "$restore_root/inbox" "$restore_root/library" "$restore_root/archive" "$restore_root/quarantine"
@@ -47,10 +47,10 @@ cat > "$restore_override" <<'YAML'
 services:
   pipeline:
     environment:
-      VIDYOOP_HANDBRAKE: /work/gated-handbrake
-      VIDYOOP_MIN_FREE_BYTES: "0"
-      VIDYOOP_SETTLE_MS: "1000"
-      VIDYOOP_POLL_MS: "100"
+      VIDDYOOP_HANDBRAKE: /work/gated-handbrake
+      VIDDYOOP_MIN_FREE_BYTES: "0"
+      VIDDYOOP_SETTLE_MS: "1000"
+      VIDDYOOP_POLL_MS: "100"
 YAML
 cat > "$restore_root/fixtures/gated-handbrake" <<'SH'
 #!/bin/sh
@@ -76,11 +76,11 @@ cat > "$restore_root/fixtures/repaired-handbrake" <<'SH'
 exec /usr/bin/HandBrakeCLI "$@"
 SH
 chmod 0755 "$restore_root/fixtures/"*handbrake
-runtime_jar="$(docker run --rm --network none --entrypoint sha256sum "$VIDYOOP_IMAGE" /app/viddyoop.jar)"
+runtime_jar="$(docker run --rm --network none --entrypoint sha256sum "$VIDDYOOP_IMAGE" /app/viddyoop.jar)"
 verification_jar="$(docker run --rm --network none --entrypoint sha256sum "$restore_verification" /app/viddyoop.jar)"
 test "$runtime_jar" = "$verification_jar"
 docker run --rm --network none --entrypoint ffmpeg \
-  --mount "type=bind,src=$restore_root/inbox,dst=/inbox" "$VIDYOOP_IMAGE" \
+  --mount "type=bind,src=$restore_root/inbox,dst=/inbox" "$VIDDYOOP_IMAGE" \
   -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 \
   -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 \
   -t 2 -map 0:v -map 1:a -c:v mpeg4 -c:a ac3 /inbox/movie.mkv
@@ -141,7 +141,7 @@ volume_helper() {
     --mount "type=bind,src=$restore_results,dst=/backup" \
     --mount "type=bind,src=$restore_root/fixtures,dst=/fixtures,readonly" \
     --mount "type=bind,src=$restore_root/quarantine,dst=/quarantine" \
-    --entrypoint "$program" "$VIDYOOP_IMAGE" "$@"
+    --entrypoint "$program" "$VIDDYOOP_IMAGE" "$@"
 }
 volume_helper ro tar -C / -cpf /backup/state.tar db work inbox library archive temporal
 volume_helper ro sha256sum /backup/state.tar > "$restore_results/state.tar.sha256"

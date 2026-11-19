@@ -22,27 +22,27 @@ public final class Viddyoop implements Runnable {
 
     @Command(name="pipeline", mixinStandardHelpOptions=true, description="Run the Temporal pipeline worker and inbox scanner.")
     public static final class Pipeline implements Callable<Integer> {
-        @Option(names="--inbox") Path inbox = Path.of(env("VIDYOOP_INBOX", "/inbox"));
-        @Option(names="--work") Path work = Path.of(env("VIDYOOP_WORK", "/work"));
-        @Option(names="--library") Path library = Path.of(env("VIDYOOP_LIBRARY", "/library"));
-        @Option(names="--archive") Path archive = Path.of(env("VIDYOOP_ARCHIVE", "/archive"));
-        @Option(names="--archive-policy") String archivePolicy = env("VIDYOOP_ARCHIVE_POLICY", "movies");
-        @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-        @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-        @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
-        @Option(names="--queue") String queue = env("VIDYOOP_QUEUE", "viddyoop");
-        @Option(names="--handbrake") String handbrake = env("VIDYOOP_HANDBRAKE", "/usr/bin/HandBrakeCLI");
-        @Option(names="--profile") String profile = env("VIDYOOP_PROFILE", HandBrakeAdapter.HEVC_PROFILE);
-        @Option(names="--mkvmerge") String mkvmerge = env("VIDYOOP_MKVMERGE", "/usr/bin/mkvmerge");
-        @Option(names="--mkvextract") String mkvextract = env("VIDYOOP_MKVEXTRACT", "/usr/bin/mkvextract");
-        @Option(names="--ffmpeg") String ffmpeg = env("VIDYOOP_FFMPEG", "/usr/bin/ffmpeg");
-        @Option(names="--encode-workers") int encodeWorkers = Integer.parseInt(env("VIDYOOP_ENCODE_WORKERS", "1"));
-        @Option(names="--preprocess-workers") int preprocessWorkers = Integer.parseInt(env("VIDYOOP_PREPROCESS_WORKERS", "1"));
-        @Option(names="--publish-workers") int publishWorkers = Integer.parseInt(env("VIDYOOP_PUBLISH_WORKERS", "1"));
-        @Option(names="--settle-ms") long settleMs = Long.parseLong(env("VIDYOOP_SETTLE_MS", "60000"));
-        @Option(names="--poll-ms") long pollMs = Long.parseLong(env("VIDYOOP_POLL_MS", "5000"));
-        @Option(names="--scratch-multiplier") int scratchMultiplier = Integer.parseInt(env("VIDYOOP_SCRATCH_MULTIPLIER", "4"));
-        @Option(names="--min-free-bytes") long minFreeBytes = Long.parseLong(env("VIDYOOP_MIN_FREE_BYTES", "10737418240"));
+        @Option(names="--inbox") Path inbox = Path.of(env("VIDDYOOP_INBOX", "/inbox"));
+        @Option(names="--work") Path work = Path.of(env("VIDDYOOP_WORK", "/work"));
+        @Option(names="--library") Path library = Path.of(env("VIDDYOOP_LIBRARY", "/library"));
+        @Option(names="--archive") Path archive = Path.of(env("VIDDYOOP_ARCHIVE", "/archive"));
+        @Option(names="--archive-policy") String archivePolicy = env("VIDDYOOP_ARCHIVE_POLICY", "movies");
+        @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+        @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+        @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
+        @Option(names="--queue") String queue = env("VIDDYOOP_QUEUE", "viddyoop");
+        @Option(names="--handbrake") String handbrake = env("VIDDYOOP_HANDBRAKE", "/usr/bin/HandBrakeCLI");
+        @Option(names="--profile") String profile = env("VIDDYOOP_PROFILE", HandBrakeAdapter.HEVC_PROFILE);
+        @Option(names="--mkvmerge") String mkvmerge = env("VIDDYOOP_MKVMERGE", "/usr/bin/mkvmerge");
+        @Option(names="--mkvextract") String mkvextract = env("VIDDYOOP_MKVEXTRACT", "/usr/bin/mkvextract");
+        @Option(names="--ffmpeg") String ffmpeg = env("VIDDYOOP_FFMPEG", "/usr/bin/ffmpeg");
+        @Option(names="--encode-workers") int encodeWorkers = Integer.parseInt(env("VIDDYOOP_ENCODE_WORKERS", "1"));
+        @Option(names="--preprocess-workers") int preprocessWorkers = Integer.parseInt(env("VIDDYOOP_PREPROCESS_WORKERS", "1"));
+        @Option(names="--publish-workers") int publishWorkers = Integer.parseInt(env("VIDDYOOP_PUBLISH_WORKERS", "1"));
+        @Option(names="--settle-ms") long settleMs = Long.parseLong(env("VIDDYOOP_SETTLE_MS", "60000"));
+        @Option(names="--poll-ms") long pollMs = Long.parseLong(env("VIDDYOOP_POLL_MS", "5000"));
+        @Option(names="--scratch-multiplier") int scratchMultiplier = Integer.parseInt(env("VIDDYOOP_SCRATCH_MULTIPLIER", "4"));
+        @Option(names="--min-free-bytes") long minFreeBytes = Long.parseLong(env("VIDDYOOP_MIN_FREE_BYTES", "10737418240"));
 
         @Override public Integer call() throws Exception {
             if (encodeWorkers < 1 || preprocessWorkers < 1 || publishWorkers < 1 || settleMs < 0
@@ -174,13 +174,13 @@ public final class Viddyoop implements Runnable {
     }
     @Command(name="itunes-index", mixinStandardHelpOptions=true, description="Index a read-only iTunes XML export, once or on a Temporal schedule.")
     public static final class ItunesIndex implements Callable<Integer> {
-        @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-        @Option(names="--xml") Path xml = Path.of(env("VIDYOOP_ITUNES_XML", "/itunes-lib/iTunes Library.xml"));
+        @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+        @Option(names="--xml") Path xml = Path.of(env("VIDDYOOP_ITUNES_XML", "/itunes-lib/iTunes Library.xml"));
         @Option(names="--serve") boolean serve;
-        @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-        @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
-        @Option(names="--queue") String queue = env("VIDYOOP_ITUNES_INDEX_QUEUE", "viddyoop-itunes-index");
-        @Option(names="--schedule-id") String scheduleId = env("VIDYOOP_ITUNES_INDEX_SCHEDULE", "viddyoop-itunes-index");
+        @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+        @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
+        @Option(names="--queue") String queue = env("VIDDYOOP_ITUNES_INDEX_QUEUE", "viddyoop-itunes-index");
+        @Option(names="--schedule-id") String scheduleId = env("VIDDYOOP_ITUNES_INDEX_SCHEDULE", "viddyoop-itunes-index");
         @Option(names="--interval-minutes", defaultValue="15") long intervalMinutes;
         @Spec Model.CommandSpec spec;
 
@@ -227,9 +227,9 @@ public final class Viddyoop implements Runnable {
 
     @Command(name="health", mixinStandardHelpOptions=true, description="Check worker liveness and Temporal namespace readiness.")
     public static final class Health implements Callable<Integer> {
-        @Option(names="--work") Path work = Path.of(env("VIDYOOP_WORK", "/work"));
-        @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-        @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
+        @Option(names="--work") Path work = Path.of(env("VIDDYOOP_WORK", "/work"));
+        @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+        @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
         @Override public Integer call() {
             if (!PipelineHeartbeat.fresh(work, System.currentTimeMillis())) return 1;
             var service = WorkflowServiceStubs.newServiceStubs(WorkflowServiceStubsOptions.newBuilder().setTarget(target)
@@ -247,8 +247,8 @@ public final class Viddyoop implements Runnable {
     @Command(name="reencode", mixinStandardHelpOptions=true,
             description="Register a new encode from a retained snapshot; the running pipeline dispatches it.")
     public static final class Reencode implements Callable<Integer> {
-        @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-        @Option(names="--library") Path library = Path.of(env("VIDYOOP_LIBRARY", "/library"));
+        @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+        @Option(names="--library") Path library = Path.of(env("VIDDYOOP_LIBRARY", "/library"));
         @Option(names="--submission", required=true) String submission;
         @Option(names="--request-key", required=true) String requestKey;
         @Option(names="--output", required=true, description="New filename directly inside the configured library.") Path output;
@@ -286,9 +286,9 @@ public final class Viddyoop implements Runnable {
 
     @Command(name="status", mixinStandardHelpOptions=true, description="Read catalog artifacts and Temporal execution status.")
     public static final class Status implements Callable<Integer> {
-        @Option(names="--database") Path database = Path.of(env("VIDYOOP_DATABASE", "/db/catalog.db"));
-        @Option(names="--temporal") String target = env("VIDYOOP_TEMPORAL", "localhost:7233");
-        @Option(names="--namespace") String namespace = env("VIDYOOP_NAMESPACE", "default");
+        @Option(names="--database") Path database = Path.of(env("VIDDYOOP_DATABASE", "/db/catalog.db"));
+        @Option(names="--temporal") String target = env("VIDDYOOP_TEMPORAL", "localhost:7233");
+        @Option(names="--namespace") String namespace = env("VIDDYOOP_NAMESPACE", "default");
         @Option(names="--submission") String submission;
         @Option(names="--limit", defaultValue="100") int limit;
         @Option(names="--json") boolean json;
@@ -332,5 +332,5 @@ public final class Viddyoop implements Runnable {
         }
         private static String clean(String value) { return value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '); }
     }
-    private static String env(String name, String fallback) { return System.getenv().getOrDefault(name, fallback); }
+    private static String env(String name, String fallback) { return EnvironmentVariables.get(name, fallback); }
 }

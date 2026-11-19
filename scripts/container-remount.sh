@@ -6,12 +6,12 @@ trial_compose="$PWD/docker-compose.yml"
 phase="${1:?prepare, verify, or cleanup}"
 trial_root="${2:?absolute path to a new directory on a disposable shared mount}"
 case "$trial_root" in /*) ;; *) echo 'An absolute fixture path is required' >&2; exit 2;; esac
-export VIDYOOP_IMAGE="${3:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${3:-viddyoop:test}"
 trial_verification="${4:-viddyoop:verification}"
 trial_project="viddyoop-remount-$(printf '%s' "$trial_root" | sha256sum | cut -c1-12)"
-export VIDYOOP_INBOX_DIR="$trial_root/inbox" VIDYOOP_LIBRARY_DIR="$trial_root/library" VIDYOOP_ARCHIVE_DIR="$trial_root/archive"
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0 VIDYOOP_NAMESPACE=default
-export VIDYOOP_MIN_FREE_BYTES=0 VIDYOOP_SETTLE_MS=1000 VIDYOOP_POLL_MS=100 VIDYOOP_ARCHIVE_POLICY=none
+export VIDDYOOP_INBOX_DIR="$trial_root/inbox" VIDDYOOP_LIBRARY_DIR="$trial_root/library" VIDDYOOP_ARCHIVE_DIR="$trial_root/archive"
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0 VIDDYOOP_NAMESPACE=default
+export VIDDYOOP_MIN_FREE_BYTES=0 VIDDYOOP_SETTLE_MS=1000 VIDDYOOP_POLL_MS=100 VIDDYOOP_ARCHIVE_POLICY=none
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$trial_compose" -p "$trial_project" "$@"; }
 check_java() {
   docker run --rm --network "${trial_project}_default" --read-only --tmpfs /tmp:exec,size=67108864,mode=1777 \
@@ -27,14 +27,14 @@ case "$phase" in
     mkdir "$trial_root/inbox" "$trial_root/library" "$trial_root/archive" "$trial_root/quarantine"
     chmod 0777 "$trial_root"/{inbox,library,archive,quarantine}
     docker run --rm --network none --mount "type=bind,src=$trial_root/inbox,dst=/inbox" \
-      --entrypoint ffmpeg "$VIDYOOP_IMAGE" -hide_banner -loglevel error \
+      --entrypoint ffmpeg "$VIDDYOOP_IMAGE" -hide_banner -loglevel error \
       -f lavfi -i testsrc2=size=320x180:rate=24 -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 \
       -t 2 -map 0:v -map 1:a -c:v mpeg4 -c:a ac3 /inbox/movie.mkv
     compose create temporal pipeline
     compose up -d --no-build --wait --wait-timeout 120 temporal
     check_java /checks/PrepareSharedSubmission.java > "$trial_root/prepared.json"
     cat /proc/sys/kernel/random/boot_id > "$trial_root/boot-before"
-    docker image inspect "$VIDYOOP_IMAGE" "$trial_verification" > "$trial_root/images.json"
+    docker image inspect "$VIDDYOOP_IMAGE" "$trial_verification" > "$trial_root/images.json"
     echo "Prepared. Reboot the Docker VM, then run verify with the same arguments."
     ;;
   verify)
@@ -66,7 +66,7 @@ PY
     compose exec -T pipeline sh -c 'find /inbox/.viddyoop-cleanup -name done -exec cat {} \;' > "$trial_root/cleanup-receipts.txt"
     grep -q replacement-preserved "$trial_root/cleanup-receipts.txt"
     # An unregistered arrival must remain pending while old identities need review.
-    docker run --rm --network none --user 0 --mount "type=bind,src=$trial_root,dst=/trial" --entrypoint cp "$VIDYOOP_IMAGE" /trial/inbox/movie.mkv /trial/inbox/next.mkv
+    docker run --rm --network none --user 0 --mount "type=bind,src=$trial_root,dst=/trial" --entrypoint cp "$VIDDYOOP_IMAGE" /trial/inbox/movie.mkv /trial/inbox/next.mkv
     sleep 3
     compose exec -T pipeline java -jar /app/viddyoop.jar status --json > "$trial_root/status-paused.json"
     python3 - "$trial_root/status-paused.json" <<'PY'
@@ -74,7 +74,7 @@ import json,sys
 assert len(json.load(open(sys.argv[1])))==1
 PY
     test ! -e "$trial_root/library/next.mp4"
-    docker run --rm --network none --user 0 --mount "type=bind,src=$trial_root,dst=/trial" --entrypoint mv "$VIDYOOP_IMAGE" /trial/inbox/movie.mkv /trial/quarantine/movie.mkv
+    docker run --rm --network none --user 0 --mount "type=bind,src=$trial_root,dst=/trial" --entrypoint mv "$VIDDYOOP_IMAGE" /trial/inbox/movie.mkv /trial/quarantine/movie.mkv
     completed=false
     for attempt in $(seq 1 90); do
       compose exec -T pipeline java -jar /app/viddyoop.jar status --json > "$trial_root/status-resumed.json"
@@ -99,7 +99,7 @@ PY
     # Preserve reports; delete only this trial's generated media and cleanup receipts.
     for directory in inbox library archive quarantine; do
       docker run --rm --network none --read-only --user 0 --mount "type=bind,src=$trial_root/$directory,dst=/cleanup" \
-        --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete
+        --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete
     done
     ;;
   *) echo 'Expected prepare, verify, or cleanup' >&2; exit 2;;

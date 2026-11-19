@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 itunes_compose="$PWD/docker-compose.yml"
-export VIDYOOP_IMAGE="${1:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${1:-viddyoop:test}"
 if [ "$#" -ge 2 ]; then
   mkdir -p "$(dirname "$2")"
   mkdir "$2"
@@ -13,14 +13,14 @@ else
 fi
 itunes_root="$(mktemp -d "${TMPDIR:-/tmp}/viddyoop-container-itunes.XXXXXX")"
 itunes_project="viddyoop-itunes-$$"
-export VIDYOOP_INBOX_DIR="$itunes_root/inbox" VIDYOOP_LIBRARY_DIR="$itunes_root/library" VIDYOOP_ARCHIVE_DIR="$itunes_root/archive"
-export VIDYOOP_ITUNES_LIBRARY_DIR="$itunes_root/export" VIDYOOP_ITUNES_MEDIA_DIR="$itunes_root/media" VIDYOOP_ITUNES_DELIVERY_DIR="$itunes_root/delivery"
-export VIDYOOP_ITUNES_XML_NAME=library.xml VIDYOOP_ITUNES_HOST_MEDIA_ROOT=/Host/Media
-export VIDYOOP_ITUNES_ADD_NAME="Automatically Add to iTunes.localized"
-export VIDYOOP_ITUNES_REJECTED=/itunes-delivery/rejected VIDYOOP_ITUNES_RECONCILE_ONLY=false
-export VIDYOOP_ITUNES_INDEX_INTERVAL_MINUTES=1 VIDYOOP_ITUNES_IMPORT_CHECK_SECONDS=1 VIDYOOP_ITUNES_IMPORT_SCAN_SECONDS=1
-export VIDYOOP_MIN_FREE_BYTES=0 VIDYOOP_SETTLE_MS=1000 VIDYOOP_POLL_MS=100 VIDYOOP_NAMESPACE=default
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0
+export VIDDYOOP_INBOX_DIR="$itunes_root/inbox" VIDDYOOP_LIBRARY_DIR="$itunes_root/library" VIDDYOOP_ARCHIVE_DIR="$itunes_root/archive"
+export VIDDYOOP_ITUNES_LIBRARY_DIR="$itunes_root/export" VIDDYOOP_ITUNES_MEDIA_DIR="$itunes_root/media" VIDDYOOP_ITUNES_DELIVERY_DIR="$itunes_root/delivery"
+export VIDDYOOP_ITUNES_XML_NAME=library.xml VIDDYOOP_ITUNES_HOST_MEDIA_ROOT=/Host/Media
+export VIDDYOOP_ITUNES_ADD_NAME="Automatically Add to iTunes.localized"
+export VIDDYOOP_ITUNES_REJECTED=/itunes-delivery/rejected VIDDYOOP_ITUNES_RECONCILE_ONLY=false
+export VIDDYOOP_ITUNES_INDEX_INTERVAL_MINUTES=1 VIDDYOOP_ITUNES_IMPORT_CHECK_SECONDS=1 VIDDYOOP_ITUNES_IMPORT_SCAN_SECONDS=1
+export VIDDYOOP_MIN_FREE_BYTES=0 VIDDYOOP_SETTLE_MS=1000 VIDDYOOP_POLL_MS=100 VIDDYOOP_NAMESPACE=default
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$itunes_compose" --profile itunes-import -p "$itunes_project" "$@"; }
 cleanup() {
   result=$?
@@ -28,7 +28,7 @@ cleanup() {
   compose down --volumes --remove-orphans || result=1
   docker run --rm --network none --read-only --user 0 \
     --mount "type=bind,src=$itunes_root,dst=/cleanup" \
-    --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
+    --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
   rm -rf "$itunes_root" || result=1
   echo "Synthetic iTunes profile evidence retained at $itunes_results"
   exit "$result"
@@ -36,15 +36,15 @@ cleanup() {
 trap cleanup EXIT
 chmod 0755 "$itunes_root" "$itunes_results"
 mkdir "$itunes_root/inbox" "$itunes_root/library" "$itunes_root/archive" "$itunes_root/export" "$itunes_root/media" "$itunes_root/delivery"
-mkdir "$itunes_root/delivery/$VIDYOOP_ITUNES_ADD_NAME" "$itunes_root/delivery/rejected"
+mkdir "$itunes_root/delivery/$VIDDYOOP_ITUNES_ADD_NAME" "$itunes_root/delivery/rejected"
 chmod 0777 "$itunes_root/inbox" "$itunes_root/library" "$itunes_root/archive" "$itunes_root/media" "$itunes_root/delivery" \
-  "$itunes_root/delivery/$VIDYOOP_ITUNES_ADD_NAME" "$itunes_root/delivery/rejected"
+  "$itunes_root/delivery/$VIDDYOOP_ITUNES_ADD_NAME" "$itunes_root/delivery/rejected"
 cat > "$itunes_root/export/library.xml" <<'XML'
 <plist><dict><key>Library Persistent ID</key><string>COMPOSE-LIB</string><key>Tracks</key><dict/></dict></plist>
 XML
 drop_fixture() {
   docker run --rm --network none --entrypoint ffmpeg \
-    --mount "type=bind,src=$itunes_root/inbox,dst=/inbox" "$VIDYOOP_IMAGE" \
+    --mount "type=bind,src=$itunes_root/inbox,dst=/inbox" "$VIDDYOOP_IMAGE" \
     -hide_banner -loglevel error -f lavfi -i "$2" \
     -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 \
     -t 2 -map 0:v -map 1:a -c:v mpeg4 -c:a ac3 "/inbox/$1.mkv"
@@ -109,7 +109,7 @@ wait_library movie
 itunes_submission="$(submission_for movie)"
 wait_outcome "$itunes_submission" DELIVERED
 cp "$itunes_results/status.json" "$itunes_results/delivered.json"
-itunes_watched="$itunes_root/delivery/$VIDYOOP_ITUNES_ADD_NAME/viddyoop-$itunes_submission.mp4"
+itunes_watched="$itunes_root/delivery/$VIDDYOOP_ITUNES_ADD_NAME/viddyoop-$itunes_submission.mp4"
 test -f "$itunes_watched"
 itunes_checksum="$(checksum movie)"
 mv "$itunes_watched" "$itunes_root/media/imported.mp4"
@@ -133,11 +133,11 @@ wait_library rejected
 itunes_rejected_id="$(submission_for rejected)"
 wait_outcome "$itunes_rejected_id" DELIVERED
 itunes_rejected_name="viddyoop-$itunes_rejected_id.mp4"
-mv "$itunes_root/delivery/$VIDYOOP_ITUNES_ADD_NAME/$itunes_rejected_name" "$itunes_root/delivery/rejected/$itunes_rejected_name"
+mv "$itunes_root/delivery/$VIDDYOOP_ITUNES_ADD_NAME/$itunes_rejected_name" "$itunes_root/delivery/rejected/$itunes_rejected_name"
 wait_outcome "$itunes_rejected_id" REJECTED
 cp "$itunes_results/status.json" "$itunes_results/rejected.json"
 test -f "$itunes_root/delivery/rejected/$itunes_rejected_name"
-test ! -e "$itunes_root/delivery/$VIDYOOP_ITUNES_ADD_NAME/$itunes_rejected_name"
+test ! -e "$itunes_root/delivery/$VIDDYOOP_ITUNES_ADD_NAME/$itunes_rejected_name"
 test -f "$itunes_root/library/rejected.mp4"
 compose exec -T pipeline java -jar /app/viddyoop.jar health
 cat "$itunes_results/confirmed.json" "$itunes_results/rejected.json"

@@ -2,23 +2,23 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 smoke_compose="$PWD/docker-compose.yml"
-export VIDYOOP_IMAGE="${1:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${1:-viddyoop:test}"
 smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/viddyoop-container.XXXXXX")"
 case "${2:-dev}" in
   dev) ;;
   server)
     smoke_compose="$PWD/docker-compose.server.yml"
-    export VIDYOOP_POSTGRES_PASSWORD_FILE="$smoke_root/postgres-password"
-    python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDYOOP_POSTGRES_PASSWORD_FILE"
-    chmod 0444 "$VIDYOOP_POSTGRES_PASSWORD_FILE"
+    export VIDDYOOP_POSTGRES_PASSWORD_FILE="$smoke_root/postgres-password"
+    python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
+    chmod 0444 "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
     ;;
   *) echo 'Expected dev or server as the second argument' >&2; exit 2;;
 esac
 smoke_project="viddyoop-smoke-$$"
-export VIDYOOP_INBOX_DIR="$smoke_root/inbox" VIDYOOP_LIBRARY_DIR="$smoke_root/library" VIDYOOP_ARCHIVE_DIR="$smoke_root/archive"
-export VIDYOOP_MIN_FREE_BYTES=0 VIDYOOP_SETTLE_MS=1000 VIDYOOP_POLL_MS=100
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0
-export VIDYOOP_NAMESPACE=default
+export VIDDYOOP_INBOX_DIR="$smoke_root/inbox" VIDDYOOP_LIBRARY_DIR="$smoke_root/library" VIDDYOOP_ARCHIVE_DIR="$smoke_root/archive"
+export VIDDYOOP_MIN_FREE_BYTES=0 VIDDYOOP_SETTLE_MS=1000 VIDDYOOP_POLL_MS=100
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0
+export VIDDYOOP_NAMESPACE=default
 # Do not inherit a developer's Compose files, optional import profile, or .env.
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$smoke_compose" -p "$smoke_project" "$@"; }
 cleanup() {
@@ -27,19 +27,19 @@ cleanup() {
   compose down --volumes --remove-orphans || result=1
   # A rootless engine maps container UID 1000 to a subordinate host UID. Use
   # its own namespace to unlink test-owned cleanup receipts before host removal.
-  if docker image inspect "$VIDYOOP_IMAGE" >/dev/null 2>&1; then
+  if docker image inspect "$VIDDYOOP_IMAGE" >/dev/null 2>&1; then
     docker run --rm --network none --read-only --user 0 \
       --mount "type=bind,src=$smoke_root,dst=/cleanup" \
-      --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
+      --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
   fi
   rm -rf "$smoke_root" || result=1
   exit "$result"
 }
 trap cleanup EXIT
 chmod 0755 "$smoke_root"
-mkdir -p "$VIDYOOP_INBOX_DIR" "$VIDYOOP_LIBRARY_DIR" "$VIDYOOP_ARCHIVE_DIR"
-chmod 0777 "$VIDYOOP_INBOX_DIR" "$VIDYOOP_LIBRARY_DIR" "$VIDYOOP_ARCHIVE_DIR"
-docker run --rm --entrypoint HandBrakeCLI "$VIDYOOP_IMAGE" --version 2>&1 | tee "$smoke_root/handbrake-version"
+mkdir -p "$VIDDYOOP_INBOX_DIR" "$VIDDYOOP_LIBRARY_DIR" "$VIDDYOOP_ARCHIVE_DIR"
+chmod 0777 "$VIDDYOOP_INBOX_DIR" "$VIDDYOOP_LIBRARY_DIR" "$VIDDYOOP_ARCHIVE_DIR"
+docker run --rm --entrypoint HandBrakeCLI "$VIDDYOOP_IMAGE" --version 2>&1 | tee "$smoke_root/handbrake-version"
 grep -Eq 'HandBrake 1\.11\.2($|[[:space:]])' "$smoke_root/handbrake-version"
 cat > "$smoke_root/subtitle.srt" <<'SRT'
 1
@@ -48,7 +48,7 @@ Container subtitle fixture
 
 SRT
 # Read-only fixture input; outputs go to the disposable world-writable inbox.
-docker run --rm -v "$smoke_root:/data:ro" -v "$VIDYOOP_INBOX_DIR:/inbox" --entrypoint ffmpeg "$VIDYOOP_IMAGE" \
+docker run --rm -v "$smoke_root:/data:ro" -v "$VIDDYOOP_INBOX_DIR:/inbox" --entrypoint ffmpeg "$VIDDYOOP_IMAGE" \
   -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 \
   -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 -i /data/subtitle.srt \
   -t 2 -map 0:v -map 1:a -map 2:s -c:v mpeg4 -c:a ac3 -c:s srt \
@@ -85,7 +85,7 @@ print('Container resource configuration and pipeline cgroup/tmpfs limits verifie
 PY
 completed=false
 for attempt in $(seq 1 90); do
-  if [ -f "$VIDYOOP_LIBRARY_DIR/smoke.mp4" ] && [ ! -f "$VIDYOOP_INBOX_DIR/smoke.mkv" ]; then
+  if [ -f "$VIDDYOOP_LIBRARY_DIR/smoke.mp4" ] && [ ! -f "$VIDDYOOP_INBOX_DIR/smoke.mkv" ]; then
     compose exec -T pipeline java -jar /app/viddyoop.jar status --json > "$smoke_root/status.json"
     if python3 - "$smoke_root/status.json" <<'PY'
 import json,sys
@@ -98,7 +98,7 @@ PY
   sleep 1
 done
 [ "$completed" = true ]
-docker run --rm -v "$VIDYOOP_LIBRARY_DIR:/library:ro" --entrypoint ffprobe "$VIDYOOP_IMAGE" \
+docker run --rm -v "$VIDDYOOP_LIBRARY_DIR:/library:ro" --entrypoint ffprobe "$VIDDYOOP_IMAGE" \
   -v error -show_entries stream=codec_name,codec_type,profile,pix_fmt -of json /library/smoke.mp4 > "$smoke_root/streams.json"
 python3 - "$smoke_root/streams.json" "$smoke_root/status.json" <<'PY'
 import json,sys

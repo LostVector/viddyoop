@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 recovery_compose="$PWD/docker-compose.yml"
-export VIDYOOP_IMAGE="${1:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${1:-viddyoop:test}"
 recovery_image="${2:-viddyoop:verification}"
 recovery_mode="${4:-dev}"
 case "$recovery_mode" in
@@ -14,15 +14,15 @@ case "$recovery_mode" in
   *) echo 'Expected dev or server as the fourth argument' >&2; exit 2;;
 esac
 recovery_fullfs_args=(--tmpfs /fullfs:size=33554432,mode=1777)
-if [ -n "${VIDYOOP_RECOVERY_FULLFS_DIR:-}" ]; then
-  recovery_fullfs_dir="$(cd "$VIDYOOP_RECOVERY_FULLFS_DIR" && pwd -P)"
+if [ -n "${VIDDYOOP_RECOVERY_FULLFS_DIR:-}" ]; then
+  recovery_fullfs_dir="$(cd "$VIDDYOOP_RECOVERY_FULLFS_DIR" && pwd -P)"
   recovery_fullfs_args=(--mount "type=bind,src=$recovery_fullfs_dir,dst=/fullfs")
 fi
 recovery_test_args=(-Dviddyoop.productionTimeouts=false)
-case "${VIDYOOP_RECOVERY_PRODUCTION_TIMEOUTS:-false}" in
+case "${VIDDYOOP_RECOVERY_PRODUCTION_TIMEOUTS:-false}" in
   false) ;;
   true) recovery_test_args=(-Dviddyoop.productionTimeouts=true -Dtest=WorkerCrashRecoveryTest -Dsurefire.failIfNoSpecifiedTests=false) ;;
-  *) echo "VIDYOOP_RECOVERY_PRODUCTION_TIMEOUTS must be true or false" >&2; exit 2 ;;
+  *) echo "VIDDYOOP_RECOVERY_PRODUCTION_TIMEOUTS must be true or false" >&2; exit 2 ;;
 esac
 if [ "$#" -ge 3 ]; then
   mkdir -p "$(dirname "$3")"
@@ -34,7 +34,7 @@ fi
 chmod 0777 "$recovery_results"
 recovery_root="$(mktemp -d "${TMPDIR:-/tmp}/viddyoop-container-recovery.XXXXXX")"
 recovery_project="viddyoop-recovery-$$"
-export VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_TEMPORAL_UI_PORT=0 VIDYOOP_NAMESPACE=default
+export VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_TEMPORAL_UI_PORT=0 VIDDYOOP_NAMESPACE=default
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$recovery_compose" -p "$recovery_project" "$@"; }
 recovery_cli_container=""
 cleanup() {
@@ -44,7 +44,7 @@ cleanup() {
   compose down --volumes --remove-orphans || result=1
   docker run --rm --network none --read-only --user 0 \
     --mount "type=bind,src=$recovery_root,dst=/cleanup" \
-    --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
+    --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete || result=1
   rm -rf "$recovery_root" || result=1
   echo "Recovery reports retained at $recovery_results"
   exit "$result"
@@ -52,16 +52,16 @@ cleanup() {
 trap cleanup EXIT
 chmod 0755 "$recovery_root"
 if [ "$recovery_mode" = server ]; then
-  export VIDYOOP_POSTGRES_PASSWORD_FILE="$recovery_root/postgres-password"
-  python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDYOOP_POSTGRES_PASSWORD_FILE"
-  chmod 0444 "$VIDYOOP_POSTGRES_PASSWORD_FILE"
+  export VIDDYOOP_POSTGRES_PASSWORD_FILE="$recovery_root/postgres-password"
+  python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
+  chmod 0444 "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
 fi
 mkdir "$recovery_root/fixtures" "$recovery_root/tools"
 chmod 0777 "$recovery_root/fixtures"
-runtime_jar="$(docker run --rm --network none --entrypoint sha256sum "$VIDYOOP_IMAGE" /app/viddyoop.jar)"
+runtime_jar="$(docker run --rm --network none --entrypoint sha256sum "$VIDDYOOP_IMAGE" /app/viddyoop.jar)"
 verification_jar="$(docker run --rm --network none --entrypoint sha256sum "$recovery_image" /app/viddyoop.jar)"
 test "$runtime_jar" = "$verification_jar"
-docker image inspect "$VIDYOOP_IMAGE" "$recovery_image" > "$recovery_results/images.json"
+docker image inspect "$VIDDYOOP_IMAGE" "$recovery_image" > "$recovery_results/images.json"
 compose up -d --no-build --wait --wait-timeout 120 "${recovery_services[@]}"
 if [ "$recovery_mode" = server ]; then
   # Compose --wait expects a targeted service to remain running, so execute the
@@ -81,7 +81,7 @@ docker rm "$recovery_cli_container" >/dev/null
 recovery_cli_container=""
 chmod 0755 "$recovery_root/tools/temporal"
 docker run --rm --network none --entrypoint ffmpeg \
-  --mount "type=bind,src=$recovery_root/fixtures,dst=/fixtures" "$VIDYOOP_IMAGE" \
+  --mount "type=bind,src=$recovery_root/fixtures,dst=/fixtures" "$VIDDYOOP_IMAGE" \
   -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 \
   -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 \
   -t 2 -map 0:v -map 1:a -c:v mpeg4 -c:a ac3 /fixtures/movie.mkv
@@ -109,7 +109,7 @@ docker run --rm --init --cpus 2 --memory 4g --network "${recovery_project}_defau
     find /results -mindepth 1 -type d -exec chmod a+rwx {} + || result=1
     exit "$result"
   ' recovery "${recovery_test_args[@]}" 2>&1 | tee "$recovery_results/tests.log"
-python3 - "$recovery_results/ViddyoopCore/surefire-reports" "${VIDYOOP_RECOVERY_PRODUCTION_TIMEOUTS:-false}" <<'PY'
+python3 - "$recovery_results/ViddyoopCore/surefire-reports" "${VIDDYOOP_RECOVERY_PRODUCTION_TIMEOUTS:-false}" <<'PY'
 import pathlib,sys,xml.etree.ElementTree as E
 reports=list(pathlib.Path(sys.argv[1]).glob('TEST-*.xml'))
 assert reports, 'Core test reports missing'

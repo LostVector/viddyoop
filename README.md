@@ -67,7 +67,7 @@ English/Japanese audio selection, emits AAC stereo before surround, and retains
 all supported text subtitle languages within the 31-total-track limit, prioritizing
 English/Spanish/French. Embedded MP4 text subtitles are extracted as well as MKV
 text subtitles. Audio-less inputs and unsupported subtitle codecs require review.
-`VIDYOOP_PROFILE=apple-tv-v1` keeps the earlier AVC profile available for existing
+`VIDDYOOP_PROFILE=apple-tv-v1` keeps the earlier AVC profile available for existing
 submissions; profile identity is persisted with each submission.
 
 For the deployed Mac Studio/NAS setup, use the
@@ -83,13 +83,18 @@ docker compose up -d --build
 docker compose exec pipeline java -jar /app/viddyoop.jar status --json
 ```
 
-Host paths can be set with `VIDYOOP_INBOX_DIR`, `VIDYOOP_LIBRARY_DIR`, and
-`VIDYOOP_ARCHIVE_DIR`; `VIDYOOP_IMAGE` selects an image tag. Work, catalog, and
+Host paths can be set with `VIDDYOOP_INBOX_DIR`, `VIDDYOOP_LIBRARY_DIR`, and
+`VIDDYOOP_ARCHIVE_DIR`; `VIDDYOOP_IMAGE` selects an image tag. Work, catalog, and
 Temporal data use separate named volumes. Temporal API/UI bind to loopback on
-ports 7233/8233; override `VIDYOOP_TEMPORAL_PORT`/`VIDYOOP_TEMPORAL_UI_PORT` when
+ports 7233/8233; override `VIDDYOOP_TEMPORAL_PORT`/`VIDDYOOP_TEMPORAL_UI_PORT` when
 needed. `docker compose down` preserves named volumes. The image's `health`
 command checks a fresh worker liveness signal plus Temporal namespace readiness,
 independently of job success or failure.
+
+Environment settings use the correctly spelled `VIDDYOOP_` prefix. The earlier
+`VIDYOOP_` spelling remains a fallback for existing CLI and Compose configurations;
+canonical settings take precedence. Use `scripts/deploy.py migrate-env` to rename
+an existing deployment env file with a private backup and unchanged values.
 
 Compose sets configurable service budgets:
 
@@ -100,11 +105,11 @@ Compose sets configurable service budgets:
 | Optional indexer | 0.5 | 512 MiB | 128 MiB |
 | Optional importer | 0.5 | 1 GiB | 256 MiB |
 
-Override `VIDYOOP_TEMPORAL_CPUS`/`MEMORY`, `VIDYOOP_PIPELINE_CPUS`/`MEMORY`,
-`VIDYOOP_ITUNES_INDEX_CPUS`/`MEMORY`, and `VIDYOOP_ITUNES_IMPORT_CPUS`/`MEMORY`
+Override `VIDDYOOP_TEMPORAL_CPUS`/`MEMORY`, `VIDDYOOP_PIPELINE_CPUS`/`MEMORY`,
+`VIDDYOOP_ITUNES_INDEX_CPUS`/`MEMORY`, and `VIDDYOOP_ITUNES_IMPORT_CPUS`/`MEMORY`
 (each pair shares its full prefix). JVM options use the corresponding
-`VIDYOOP_PIPELINE_JAVA_OPTIONS`, `VIDYOOP_ITUNES_INDEX_JAVA_OPTIONS`, and
-`VIDYOOP_ITUNES_IMPORT_JAVA_OPTIONS`; keep heap below the service memory limit to
+`VIDDYOOP_PIPELINE_JAVA_OPTIONS`, `VIDDYOOP_ITUNES_INDEX_JAVA_OPTIONS`, and
+`VIDDYOOP_ITUNES_IMPORT_JAVA_OPTIONS`; keep heap below the service memory limit to
 leave room for native allocations, threads, and media tools. Each Java service
 has a 64 MiB `/tmp` tmpfs with executable mappings for SQLite's extracted native
 library, also charged to its memory budget. These are initial
@@ -156,9 +161,9 @@ populated database and compares submission, run and artifact identities. This
 candidate also passes the full 126-test core suite with PostgreSQL as its external
 workflow endpoint, including worker interruption and failed-stage repair. Use
 the explicit `server` mode for its database-backup/restore drill. A direct launch requires
-`VIDYOOP_POSTGRES_PASSWORD_FILE`; no production password is provided in the repo.
+`VIDDYOOP_POSTGRES_PASSWORD_FILE`; no production password is provided in the repo.
 New namespaces retain closed histories for 30 days by default
-(`VIDYOOP_HISTORY_RETENTION`); existing namespace retention is preserved. Catalog
+(`VIDDYOOP_HISTORY_RETENTION`); existing namespace retention is preserved. Catalog
 and media retention are separate. Once a closed history expires it cannot be
 reset by `retry`; retained inputs can instead support an explicit new `reencode`.
 Use separate project/data paths from the dev stack; its SQLite histories cannot
@@ -205,7 +210,7 @@ JUnit reports, coverage, image/config metadata, and logs in a newly created
 results directory (printed on exit). An optional third argument selects a new
 results directory; it must not already exist. No core tests may be skipped.
 The default ENOSPC target is a 32 MiB tmpfs. To repeat on another disposable
-filesystem, set `VIDYOOP_RECOVERY_FULLFS_DIR` to its existing mount directory.
+filesystem, set `VIDDYOOP_RECOVERY_FULLFS_DIR` to its existing mount directory.
 The tests refuse to fill a filesystem larger than 64 MiB; never use a mount
 holding other work. The recovery fixture explicitly truncates its filler before
 unlinking it: VirtioFS can retain host descriptors after guest deletion, delaying
@@ -214,7 +219,7 @@ block reclamation. Operational recovery must verify actual free space too.
 For crash checks with the normal heartbeat/backoff policies, run:
 
 ```sh
-VIDYOOP_RECOVERY_PRODUCTION_TIMEOUTS=true \
+VIDDYOOP_RECOVERY_PRODUCTION_TIMEOUTS=true \
   scripts/container-recovery.sh viddyoop:test viddyoop:verification
 ```
 
@@ -333,7 +338,7 @@ java -jar java/modules/ViddyoopCore/target/viddyoop-core-1.0.0-SNAPSHOT.jar pipe
   --mkvmerge /path/to/mkvmerge --mkvextract /path/to/mkvextract --ffmpeg /path/to/ffmpeg
 ```
 
-`pipeline --help` lists options. Each option also has a `VIDYOOP_` environment
+`pipeline --help` lists options. Each option also has a `VIDDYOOP_` environment
 variable: `INBOX`, `WORK`, `LIBRARY`, `ARCHIVE`, `ARCHIVE_POLICY`, `DATABASE`, `TEMPORAL`, `NAMESPACE`, `QUEUE`,
 `HANDBRAKE`, `MKVMERGE`, `MKVEXTRACT`, `FFMPEG`, `ENCODE_WORKERS`, `PREPROCESS_WORKERS`, `PUBLISH_WORKERS`, `SETTLE_MS`,
 `POLL_MS`, `SCRATCH_MULTIPLIER`, and `MIN_FREE_BYTES`. Defaults include one worker per stage, a 60-second
@@ -422,10 +427,10 @@ preserving an operator pause and its note; overlapping index runs are skipped.
 Choose distinct `--schedule-id`/`--queue` values if operating separate catalogs
 in one Temporal namespace. One scheduled index worker may own a catalog at a time.
 
-For Compose, set `VIDYOOP_ITUNES_LIBRARY_DIR` to an existing export directory and
+For Compose, set `VIDDYOOP_ITUNES_LIBRARY_DIR` to an existing export directory and
 start `docker compose --profile itunes up -d --build`. The directory is mounted
-read-only. `VIDYOOP_ITUNES_XML_NAME` defaults to `iTunes Library.xml` and
-`VIDYOOP_ITUNES_INDEX_INTERVAL_MINUTES` to 15. The base stack does not require an
+read-only. `VIDDYOOP_ITUNES_XML_NAME` defaults to `iTunes Library.xml` and
+`VIDDYOOP_ITUNES_INDEX_INTERVAL_MINUTES` to 15. The base stack does not require an
 iTunes export. This optional service's container healthcheck is disabled because
 the pipeline liveness signal belongs to a different process; index freshness is
 stored in `itunes_index_meta` with the library identity, source path, and export
@@ -479,14 +484,14 @@ mode after restoring a backup, since a transfer may have happened after its cuto
 
 Automatic delivery has a separate Compose opt-in. Configure these existing host paths:
 
-- `VIDYOOP_ITUNES_LIBRARY_DIR`: directory containing the XML export.
-- `VIDYOOP_ITUNES_DELIVERY_DIR`: one parent containing the watched folder and private staging.
-- `VIDYOOP_ITUNES_MEDIA_DIR`: app-managed media directory, mounted read-only.
-- `VIDYOOP_ITUNES_HOST_MEDIA_ROOT`: absolute media root appearing in the export's file URIs.
+- `VIDDYOOP_ITUNES_LIBRARY_DIR`: directory containing the XML export.
+- `VIDDYOOP_ITUNES_DELIVERY_DIR`: one parent containing the watched folder and private staging.
+- `VIDDYOOP_ITUNES_MEDIA_DIR`: app-managed media directory, mounted read-only.
+- `VIDDYOOP_ITUNES_HOST_MEDIA_ROOT`: absolute media root appearing in the export's file URIs.
 
 Then run `docker compose --profile itunes-import up -d --build`; this also enables
-the indexer. `VIDYOOP_ITUNES_ADD_NAME` defaults to `Automatically Add to iTunes.localized`.
-`VIDYOOP_ITUNES_REJECTED`, when set, is a path visible inside the import container.
+the indexer. `VIDDYOOP_ITUNES_ADD_NAME` defaults to `Automatically Add to iTunes.localized`.
+`VIDDYOOP_ITUNES_REJECTED`, when set, is a path visible inside the import container.
 The index-only `itunes` profile never enables delivery. Import worker healthchecking
 is disabled rather than borrowing the pipeline's liveness signal; inspect receipts
 and Temporal workflows. Synthetic app/export tests and a packaged CLI restart test
@@ -495,7 +500,7 @@ still require validation before rollout.
 
 Cold backup and restore procedures, including the native recovery drill, are in
 [docs/recovery.md](docs/recovery.md). Keep import in observation-only mode after
-restore with `VIDYOOP_ITUNES_RECONCILE_ONLY=true` until possible post-backup
+restore with `VIDDYOOP_ITUNES_RECONCILE_ONLY=true` until possible post-backup
 transfers are reconciled. Restore all persistence and media roots together;
 `status` alone does not verify the restored files.
 

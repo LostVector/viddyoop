@@ -5,13 +5,13 @@ cd "$(dirname "$0")/.."
 phase="${1:?prepare, verify, or cleanup}"
 trial_root="${2:?absolute path to a new directory on a disposable shared mount}"
 case "$trial_root" in /*) ;; *) echo 'An absolute fixture path is required' >&2; exit 2;; esac
-export VIDYOOP_IMAGE="${3:-viddyoop:test}"
+export VIDDYOOP_IMAGE="${3:-viddyoop:test}"
 verification="${4:-viddyoop:verification}"
 project="viddyoop-powerloss-$(printf '%s' "$trial_root" | sha256sum | cut -c1-12)"
-export VIDYOOP_INBOX_DIR="$trial_root/inbox" VIDYOOP_LIBRARY_DIR="$trial_root/library" VIDYOOP_ARCHIVE_DIR="$trial_root/archive"
-export VIDYOOP_POSTGRES_PASSWORD_FILE="$trial_root/postgres-password"
-export VIDYOOP_NAMESPACE=default VIDYOOP_TEMPORAL_PORT=0 VIDYOOP_MIN_FREE_BYTES=0
-export VIDYOOP_SETTLE_MS=1000 VIDYOOP_POLL_MS=100 VIDYOOP_ARCHIVE_POLICY=none
+export VIDDYOOP_INBOX_DIR="$trial_root/inbox" VIDDYOOP_LIBRARY_DIR="$trial_root/library" VIDDYOOP_ARCHIVE_DIR="$trial_root/archive"
+export VIDDYOOP_POSTGRES_PASSWORD_FILE="$trial_root/postgres-password"
+export VIDDYOOP_NAMESPACE=default VIDDYOOP_TEMPORAL_PORT=0 VIDDYOOP_MIN_FREE_BYTES=0
+export VIDDYOOP_SETTLE_MS=1000 VIDDYOOP_POLL_MS=100 VIDDYOOP_ARCHIVE_POLICY=none
 compose() { COMPOSE_PROFILES= docker compose --env-file /dev/null -f "$PWD/docker-compose.server.yml" -f "$trial_root/override.yml" -p "$project" "$@"; }
 check_catalog() {
   docker run --rm --network none --read-only --tmpfs /tmp:exec,size=67108864,mode=1777 \
@@ -24,13 +24,13 @@ case "$phase" in
     chmod 0755 "$trial_root"
     mkdir "$trial_root/inbox" "$trial_root/library" "$trial_root/archive" "$trial_root/tools"
     chmod 0777 "$trial_root/inbox" "$trial_root/library" "$trial_root/archive"
-    python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDYOOP_POSTGRES_PASSWORD_FILE"
-    chmod 0444 "$VIDYOOP_POSTGRES_PASSWORD_FILE"
+    python3 -c 'import secrets; print(secrets.token_hex(32))' > "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
+    chmod 0444 "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
     cat > "$trial_root/override.yml" <<'YAML'
 services:
   pipeline:
     environment:
-      VIDYOOP_HANDBRAKE: /work/boot-gated-handbrake
+      VIDDYOOP_HANDBRAKE: /work/boot-gated-handbrake
 YAML
     touch "$trial_root/.viddyoop-powerloss-trial"
     cat > "$trial_root/tools/boot-gated-handbrake" <<'SH'
@@ -55,13 +55,13 @@ esac
 exec /usr/bin/HandBrakeCLI "$@"
 SH
     chmod 0755 "$trial_root/tools/boot-gated-handbrake"
-    test "$(docker run --rm --network none --entrypoint sha256sum "$VIDYOOP_IMAGE" /app/viddyoop.jar)" = \
+    test "$(docker run --rm --network none --entrypoint sha256sum "$VIDDYOOP_IMAGE" /app/viddyoop.jar)" = \
          "$(docker run --rm --network none --entrypoint sha256sum "$verification" /app/viddyoop.jar)"
     # Flush harness configuration before accepting any input; no post-start sync.
     compose run --rm --no-deps --entrypoint sh --volume "$trial_root/tools:/tools:ro" pipeline -ec \
       'cp /tools/boot-gated-handbrake /work/boot-gated-handbrake; cat /proc/sys/kernel/random/boot_id > /work/trial-boot; sync /work/boot-gated-handbrake /work/trial-boot /work'
     cat /proc/sys/kernel/random/boot_id > "$trial_root/boot-before"
-    docker run --rm --network none --mount "type=bind,src=$trial_root/inbox,dst=/inbox" --entrypoint ffmpeg "$VIDYOOP_IMAGE" \
+    docker run --rm --network none --mount "type=bind,src=$trial_root/inbox,dst=/inbox" --entrypoint ffmpeg "$VIDDYOOP_IMAGE" \
       -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 -f lavfi -i anullsrc=channel_layout=5.1:sample_rate=48000 \
       -t 2 -map 0:v -map 1:a -c:v mpeg4 -c:a ac3 /inbox/movie.mkv
     compose up -d --no-build --wait --wait-timeout 120
@@ -83,7 +83,7 @@ PY
     check_catalog /checks/CheckStagedCatalog.java /db/catalog.db "$id" > "$trial_root/catalog-before.json"
     compose exec -T pipeline sha256sum /inbox/movie.mkv > "$trial_root/source-before.sha256"
     compose config --format json > "$trial_root/compose.json"
-    docker image inspect "$VIDYOOP_IMAGE" "$verification" > "$trial_root/images.json"
+    docker image inspect "$VIDDYOOP_IMAGE" "$verification" > "$trial_root/images.json"
     docker inspect "$(compose ps -q pipeline)" "$(compose ps -q temporal)" "$(compose ps -q postgres)" > "$trial_root/containers-before.json"
     echo 'Prepared active encode. Force-stop only the isolated VM without stopping its containers, then restart it and run verify.'
     ;;
@@ -131,9 +131,9 @@ PY
     compose down --volumes --remove-orphans
     for directory in inbox library archive; do
       docker run --rm --network none --read-only --user 0 --mount "type=bind,src=$trial_root/$directory,dst=/cleanup" \
-        --entrypoint find "$VIDYOOP_IMAGE" /cleanup -mindepth 1 -delete
+        --entrypoint find "$VIDDYOOP_IMAGE" /cleanup -mindepth 1 -delete
     done
-    rm -f "$VIDYOOP_POSTGRES_PASSWORD_FILE"
+    rm -f "$VIDDYOOP_POSTGRES_PASSWORD_FILE"
     ;;
   *) echo 'Expected prepare, verify, or cleanup' >&2; exit 2;;
 esac
