@@ -70,6 +70,11 @@ text subtitles. Audio-less inputs and unsupported subtitle codecs require review
 `VIDYOOP_PROFILE=apple-tv-v1` keeps the earlier AVC profile available for existing
 submissions; profile identity is persisted with each submission.
 
+For the deployed Mac Studio/NAS setup, use the
+[deployment guide](docs/deployment-macstudio.md) and `scripts/deploy.py`.
+It uses PostgreSQL persistence and the external `nas-public-temp` volume; automatic
+TV import remains disabled. The commands below are the local development stack.
+
 With Docker Compose available and the host directories writable by UID 1000:
 
 ```sh
@@ -110,8 +115,10 @@ than reservations. Scratch-space admission remains a separate filesystem check.
 The Container CI workflow builds and runs `scripts/container-smoke.sh`, checking
 HandBrake 1.11.2, real ingest/remux/encode/publication/cleanup, HEVC Main10, AAC/AC3 surround and
 text subtitle output, status, readiness, and the configured resource limits
-(including the pipeline's actual cgroup/tmpfs settings). Only the verified image is published
-to GHCR on a push to the default branch, tagged `sha-<commit>` and `main`.
+(including the pipeline's actual cgroup/tmpfs settings). Native AMD64 and ARM64 jobs
+verify the same runtime and the NAS deployment overlay. After both platforms'
+default-branch recovery/restore gates pass, verified images are published to
+GHCR as a multi-platform `sha-<commit>`/`main` manifest.
 Locally, after `docker build -t viddyoop:test .`, run:
 
 ```sh
