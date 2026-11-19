@@ -87,11 +87,17 @@ checksum() {
   # Read through the owning container UID; a rootless host UID may differ.
   compose exec -T pipeline sha256sum "/library/$1.mp4"
 }
-compose up -d --no-build --wait --wait-timeout 120
+# Only the backend and pipeline have readiness healthchecks. The optional
+# workers disable the image's pipeline-specific check; some Compose versions
+# reject --wait for an explicitly disabled check. Their readiness is exercised
+# by the delivery, recurring-index confirmation and rejection assertions below.
+compose up -d --no-build --wait --wait-timeout 120 temporal pipeline
+compose up -d --no-build itunes-index itunes-import
 docker inspect "$(compose ps -q itunes-index)" "$(compose ps -q itunes-import)" > "$itunes_results/containers.json"
 python3 - "$itunes_results/containers.json" <<'PY'
 import json,sys
 for container in json.load(open(sys.argv[1])):
+    assert container['State']['Running'], container['Name']
     assert container['HostConfig']['ReadonlyRootfs'], container['Name']
     mounts={m['Destination']:m for m in container['Mounts']}
     if container['Config']['Labels']['com.docker.compose.service']=='itunes-import':
